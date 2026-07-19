@@ -1,0 +1,49 @@
+version: "3.8"
+
+services:
+  postgres:
+    image: postgres:15
+    container_name: mizan_postgres
+    restart: unless-stopped
+    ports:
+      - "5434:5432"
+    environment:
+      POSTGRES_USER: mizan_user
+      POSTGRES_PASSWORD: mizan_password
+      POSTGRES_DB: mizan_db
+    volumes:
+      - mizan_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mizan_user -d mizan_db"]
+      interval: 5s
+      retries: 5
+
+  memgraph:
+    image: memgraph/memgraph-platform
+    container_name: mizan-memgraph
+    restart: unless-stopped
+    ports:
+      - "7687:7687"
+      - "3001:3000"
+    command: ["--auth-user=mizan_admin", "--auth-password=mizan_secure_pass"]
+    healthcheck:
+      test: ["CMD-SHELL", "echo 'RETURN 1' | mgconsole"]
+      interval: 5s
+      retries: 5
+
+  ai:
+    build: ./apps/ai
+    container_name: mizan-ai
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8000:8000"
+    environment:
+      MEMGRAPH_URI: bolt://memgraph:7687
+      MEMGRAPH_USER: mizan_admin
+      MEMGRAPH_PASSWORD: mizan_secure_pass
+    depends_on:
+      memgraph:
+        condition: service_healthy
+
+volumes:
+  mizan_pg_data:

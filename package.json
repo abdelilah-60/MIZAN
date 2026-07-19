@@ -1,0 +1,4 @@
+{
+  "name": "mizan-workspace",
+  "workspaces": ["apps/*", "packages/*"]
+}

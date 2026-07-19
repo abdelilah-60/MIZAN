@@ -1,0 +1,24 @@
+{
+  "name": "@mizan/scheduler",
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "bun run --hot src/index.ts",
+    "start": "bun run src/index.ts"
+  },
+  "dependencies": {
+    "@prisma/adapter-pg": "^7.8.0",
+    "@prisma/client": "^7.8.0",
+    "@turf/centroid": "^7.3.5",
+    "@turf/helpers": "^7.3.5",
+    "dotenv": "^17.4.2",
+    "node-cron": "^3.0.3",
+    "pg": "^8.20.0"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.3.13",
+    "@types/node": "^25.6.2",
+    "@types/node-cron": "^3.0.11",
+    "@types/pg": "^8.11.11",
+    "typescript": "^6.0.3"
+  }
+}
