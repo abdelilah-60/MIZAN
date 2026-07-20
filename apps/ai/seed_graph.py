@@ -49,7 +49,7 @@ def seed_database():
         with driver.session(**session_kwargs) as session:
             # Create performance indices
             print("Creating indices...")
-            session.run("CREATE INDEX FOR (n:OliveVariety) ON (n.name)")
+            session.run("CREATE INDEX FOR (n:Variety) ON (n.name)")
             session.run("CREATE INDEX FOR (n:Disease) ON (n.name)")
             session.run("CREATE INDEX FOR (n:OperationTemplate) ON (n.type)")
             session.run("CREATE INDEX FOR (n:Parameter) ON (n.name)")
@@ -63,7 +63,7 @@ def seed_database():
             for v in OLIVE_VARIETIES:
                 session.run(
                     """
-                    CREATE (:OliveVariety {
+                    CREATE (:Variety {
                         name: $name,
                         origin: $origin,
                         oil_content: $oil_content,
@@ -96,7 +96,7 @@ def seed_database():
                 for disease in diseases:
                     session.run(
                         """
-                        MATCH (v:OliveVariety {name: $variety}), (d:Disease {name: $disease})
+                        MATCH (v:Variety {name: $variety}), (d:Disease {name: $disease})
                         CREATE (v)-[:VULNERABLE_TO {condition: d.trigger_condition}]->(d)
                         """,
                         variety=variety, disease=disease
@@ -187,7 +187,7 @@ def seed_database():
                 for op_type in operation_templates:
                     session.run(
                         """
-                        MATCH (v:OliveVariety {name: $name}), (ot:OperationTemplate {type: $op_type})
+                        MATCH (v:Variety {name: $name}), (ot:OperationTemplate {type: $op_type})
                         CREATE (v)-[:HAS_OPERATION]->(ot)
                         """,
                         name=v["name"], op_type=op_type
@@ -203,7 +203,7 @@ def seed_database():
                 for param_name in field_req_params:
                     session.run(
                         """
-                        MATCH (v:OliveVariety {name: $name}), (p:Parameter {name: $param_name})
+                        MATCH (v:Variety {name: $name}), (p:Parameter {name: $param_name})
                         CREATE (v)-[:HAS_FIELD_REQUIREMENT]->(p)
                         """,
                         name=v["name"], param_name=param_name
