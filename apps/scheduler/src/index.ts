@@ -63,3 +63,14 @@ cron.schedule("54 23 * * *", async () => {
 runScheduler().then(() => {
   logger.info("Scheduler is active. Cron schedule: 23:54 daily.");
 });
+
+// Start a dummy HTTP server to satisfy Railway's health check for web services
+const port = Number(process.env.PORT) || 3000;
+Bun.serve({
+  port,
+  hostname: "0.0.0.0",
+  fetch() {
+    return new Response("Scheduler is alive and running!");
+  },
+});
+logger.info(`Scheduler health-check server listening on http://0.0.0.0:${port}`);

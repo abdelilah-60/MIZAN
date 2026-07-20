@@ -32,4 +32,13 @@ def health_graph():
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
+@app.get("/health/vars")
+def health_vars():
+    import os
+    return {
+        "uri": os.getenv("MEMGRAPH_URI"),
+        "user": os.getenv("MEMGRAPH_USER"),
+        "has_password": bool(os.getenv("MEMGRAPH_PASSWORD"))
+    }
+
 

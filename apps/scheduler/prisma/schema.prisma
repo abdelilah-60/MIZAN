@@ -1,0 +1,170 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id          String   @id @default(uuid())
+  fullName    String
+  email       String   @unique
+  password    String
+  phoneNumber String?  @unique
+  role        String   @default("USER")
+  createdAt   DateTime @default(now())
+
+  farms Farm[]
+}
+
+model Farm {
+  id        String   @id @default(uuid())
+  name      String
+  userId    String
+  createdAt DateTime @default(now())
+
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fields Field[]
+}
+
+model Field {
+  id         String   @id @default(uuid())
+  name       String
+  farmId     String
+  geoPolygon Json
+  area       Float
+  cropType   String   @default("Olive")
+  equipmentConfig Json?
+  soilMetadata    Json?
+  plantingDate    DateTime?
+  agronomicData   Json?
+  createdAt       DateTime @default(now())
+
+  farm Farm @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  operations    Operation[]
+  dailyMetrics  FieldDailyMetrics[]
+  seasonSummary FieldSeasonSummary[]
+  irrigationConfig IrrigationConfig?
+  soilAnalysis     SoilAnalysis[]
+  yieldConfig      YieldConfig?
+}
+
+model Operation {
+  id        String   @id @default(uuid())
+  type      String
+  date      DateTime @default(now())
+  metadata  Json
+  fieldId   String
+  createdAt DateTime @default(now())
+
+  field Field @relation(fields: [fieldId], references: [id], onDelete: Cascade)
+}
+
+model FieldDailyMetrics {
+  id                  String   @id @default(uuid())
+  fieldId             String
+  date                DateTime @db.Date
+  season              Int
+
+  // Weather
+  tmax                Float
+  tmin                Float
+  humidity            Float?
+  precipitation       Float?
+
+  // GDD
+  gddDaily            Float
+  accumulatedGdd      Float    @default(0)
+
+  // Chilling hours (< 7 C)
+  chillingHoursToday  Float    @default(0)
+  accumulatedChilling Float    @default(0)
+
+  // Bio-Fix
+  bioFixReached       Boolean  @default(false)
+
+  // Phenological stage
+  currentStage        String?
+  gddToNextStage      Float?
+
+  createdAt           DateTime @default(now())
+
+  field Field @relation(fields: [fieldId], references: [id], onDelete: Cascade)
+
+  @@unique([fieldId, date])
+  @@index([fieldId, date])
+  @@index([fieldId, season])
+}
+
+model FieldSeasonSummary {
+  id                     String    @id @default(uuid())
+  fieldId                String
+  season                 Int
+
+  // Current state — updated nightly by apps/scheduler
+  currentStage           String?
+  accumulatedGdd         Float     @default(0)
+  accumulatedChilling    Float     @default(0)
+  bioFixReached          Boolean   @default(false)
+  bioFixDate             DateTime?
+  gddToNextStage         Float?
+  daysInCurrentStage     Int       @default(0)
+  lastUpdated            DateTime  @default(now())
+
+  // Agronomic predictions
+  predictedFloweringDate DateTime?
+  predictedHarvestDate   DateTime?
+
+  // Season totals
+  totalPrecipitation     Float     @default(0)
+  avgTemperature         Float?
+
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+
+  field Field @relation(fields: [fieldId], references: [id], onDelete: Cascade)
+
+  @@unique([fieldId, season])
+  @@index([fieldId])
+}
+
+model IrrigationConfig {
+  id               String   @id @default(uuid())
+  fieldId          String   @unique
+  dripperFlowRate  Float    // صبيب المنقط (لتر/ساعة)
+  drippersPerTree  Int      // عدد المنقطات لكل شجرة
+  treeDensity      Int      // كثافة الغرس (شجرة/هكتار)
+  efficiency       Float    @default(0.85) // كفاءة نظام الري
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  field            Field    @relation(fields: [fieldId], references: [id], onDelete: Cascade)
+}
+
+model SoilAnalysis {
+  id             String   @id @default(uuid())
+  fieldId        String
+  analysisDate   DateTime @db.Date
+  ph             Float?
+  organicMatter  Float?   // المادة العضوية (%)
+  nitrogen       Float?   // النيتروجين (ppm)
+  phosphorus     Float?   // الفوسفور (ppm)
+  potassium      Float?   // البوتاسيوم (ppm)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  field          Field    @relation(fields: [fieldId], references: [id], onDelete: Cascade)
+}
+
+model YieldConfig {
+  id               String   @id @default(uuid())
+  fieldId          String   @unique
+  targetYield      Float    // الإنتاجية المستهدفة (طن/هكتار)
+  bearingStatus    String   // ON_YEAR, OFF_YEAR, NORMAL
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  field            Field    @relation(fields: [fieldId], references: [id], onDelete: Cascade)
+}

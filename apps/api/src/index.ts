@@ -67,5 +67,6 @@ export { app };
 
 export default {
   port,
+  hostname: "0.0.0.0",
   fetch: app.fetch,
 };

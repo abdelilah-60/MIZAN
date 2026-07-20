@@ -478,3 +478,12 @@ def get_graph_stats(session=Depends(get_db_session)):
         "total_relationships": edges_res["c"],
         "breakdown": counts
     }
+
+@router.post("/seed")
+def seed_database_endpoint(session=Depends(get_db_session)):
+    try:
+        from seed_graph import seed_database
+        seed_database()
+        return {"status": "success", "message": "Database seeded successfully!"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to seed database: {str(e)}")

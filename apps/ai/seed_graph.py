@@ -7,6 +7,7 @@ load_dotenv()
 URI = os.getenv("MEMGRAPH_URI", "bolt://localhost:7687")
 USER = os.getenv("MEMGRAPH_USER", "")
 PASSWORD = os.getenv("MEMGRAPH_PASSWORD", "")
+DATABASE = os.getenv("MEMGRAPH_DATABASE", USER)
 AUTH = (USER, PASSWORD) if USER else None
 
 OLIVE_VARIETIES = [
@@ -42,7 +43,10 @@ def seed_database():
     driver = GraphDatabase.driver(URI, auth=AUTH)
 
     try:
-        with driver.session() as session:
+        session_kwargs = {}
+        if DATABASE:
+            session_kwargs["database"] = DATABASE
+        with driver.session(**session_kwargs) as session:
             # Create performance indices
             print("Creating indices...")
             session.run("CREATE INDEX ON :OliveVariety(name)")
@@ -219,7 +223,7 @@ def seed_database():
 
     except Exception as e:
         print(f"[ERROR] Error seeding graph: {e}")
-        print("   Ensure Memgraph is running via Docker (port 7687).")
+        raise e
     finally:
         driver.close()
 
