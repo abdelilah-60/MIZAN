@@ -49,10 +49,10 @@ def seed_database():
         with driver.session(**session_kwargs) as session:
             # Create performance indices
             print("Creating indices...")
-            session.run("CREATE INDEX FOR (n:Variety) ON (n.name)")
-            session.run("CREATE INDEX FOR (n:Disease) ON (n.name)")
-            session.run("CREATE INDEX FOR (n:OperationTemplate) ON (n.type)")
-            session.run("CREATE INDEX FOR (n:Parameter) ON (n.name)")
+            session.run("CREATE INDEX IF NOT EXISTS FOR (n:Variety) ON (n.name)")
+            session.run("CREATE INDEX IF NOT EXISTS FOR (n:Disease) ON (n.name)")
+            session.run("CREATE INDEX IF NOT EXISTS FOR (n:OperationTemplate) ON (n.type)")
+            session.run("CREATE INDEX IF NOT EXISTS FOR (n:Parameter) ON (n.name)")
 
             # Clear all existing data
             print("Clearing existing database...")
