@@ -90,27 +90,134 @@ def seed_database():
                     pathogen=d["pathogen"], trigger_condition=d["trigger_condition"]
                 )
 
-            # ── 3. Create VULNERABLE_TO relationships ────────────────────
-            print("Creating disease vulnerability relationships...")
-            for variety, diseases in VARIETY_DISEASE_MAP.items():
-                for disease in diseases:
+            # ── 3. Create SUSCEPTIBLE_TO relationships with scores ─────
+            print("Creating disease susceptibility relationships with scores...")
+            SUSCEPTIBILITY_MAP = {
+                "Picholine Marocaine": {"Peacock Spot": 65, "Olive Knot": 55, "Verticillium Wilt": 70, "Olive Fruit Fly": 60, "Anthracnose": 40, "Olive Leaf Spot": 35},
+                "Haouzia":             {"Peacock Spot": 50, "Anthracnose": 60, "Olive Fruit Fly": 55, "Olive Knot": 30, "Verticillium Wilt": 25, "Olive Leaf Spot": 45},
+                "Menara":              {"Peacock Spot": 55, "Anthracnose": 65, "Olive Fruit Fly": 50, "Olive Knot": 60, "Verticillium Wilt": 35, "Olive Leaf Spot": 40},
+                "Dahbia":              {"Peacock Spot": 45, "Olive Fruit Fly": 50, "Anthracnose": 30, "Olive Knot": 25, "Verticillium Wilt": 20, "Olive Leaf Spot": 35},
+                "Meslala":             {"Olive Knot": 55, "Olive Fruit Fly": 65, "Peacock Spot": 40, "Anthracnose": 35, "Verticillium Wilt": 30, "Olive Leaf Spot": 25},
+                "Arbequina":           {"Verticillium Wilt": 75, "Peacock Spot": 60, "Olive Fruit Fly": 70, "Anthracnose": 45, "Olive Knot": 35, "Olive Leaf Spot": 40},
+            }
+            for variety, diseases in SUSCEPTIBILITY_MAP.items():
+                for disease, score in diseases.items():
                     session.run(
                         """
                         MATCH (v:Variety {name: $variety}), (d:Disease {name: $disease})
-                        CREATE (v)-[:VULNERABLE_TO {condition: d.trigger_condition}]->(d)
+                        CREATE (v)-[:SUSCEPTIBLE_TO {score: $score, notes: ""}]->(d)
                         """,
-                        variety=variety, disease=disease
+                        variety=variety, disease=disease, score=score
                     )
 
-            # ── 4. Create Operation Templates ────────────────────────────
+            # ── 4. Create Phenological Stages ─────────────────────────────
+            print("Creating phenological stage nodes...")
+            stages = [
+                {"name": "Dormancy",      "order": 1},
+                {"name": "Bud Break",     "order": 2},
+                {"name": "Flowering",     "order": 3},
+                {"name": "Fruit Set",     "order": 4},
+                {"name": "Pit Hardening", "order": 5},
+                {"name": "Oil Accumulation", "order": 6},
+                {"name": "Maturation",    "order": 7},
+                {"name": "Harvest",       "order": 8},
+            ]
+            for s in stages:
+                session.run(
+                    "CREATE (:Stage {name: $name, order: $order})",
+                    name=s["name"], order=s["order"]
+                )
+
+            # ── 5. Create Kc relationships (Variety -> Stage) ─────────────
+            print("Creating Kc crop coefficient relationships...")
+            KC_DEFAULTS = {
+                "Dormancy": 0.45, "Bud Break": 0.50, "Flowering": 0.55,
+                "Fruit Set": 0.65, "Pit Hardening": 0.60, "Oil Accumulation": 0.55,
+                "Maturation": 0.50, "Harvest": 0.45,
+            }
+            for v in OLIVE_VARIETIES:
+                for stage_name, kc in KC_DEFAULTS.items():
+                    session.run(
+                        """
+                        MATCH (v:Variety {name: $name}), (s:Stage {name: $stage})
+                        CREATE (v)-[:HAS_KC_AT {kc: $kc}]->(s)
+                        """,
+                        name=v["name"], stage=stage_name, kc=kc
+                    )
+
+            # ── 6. Create Soil Types ──────────────────────────────────────
+            print("Creating soil type nodes...")
+            soil_types = ["Sandy", "Clay", "Loamy", "Clay-Loam", "Sandy-Loam", "Calcareous"]
+            for soil in soil_types:
+                session.run("CREATE (:SoilType {name: $name})", name=soil)
+
+            # ── 7. Create Soil Compatibility relationships ────────────────
+            print("Creating soil compatibility relationships...")
+            SOIL_COMPAT = {
+                "Picholine Marocaine": {"Sandy": "GOOD", "Clay": "MODERATE", "Loamy": "EXCELLENT", "Clay-Loam": "GOOD", "Sandy-Loam": "EXCELLENT", "Calcareous": "GOOD"},
+                "Haouzia":             {"Sandy": "MODERATE", "Clay": "GOOD", "Loamy": "EXCELLENT", "Clay-Loam": "EXCELLENT", "Sandy-Loam": "GOOD", "Calcareous": "MODERATE"},
+                "Menara":              {"Sandy": "GOOD", "Clay": "MODERATE", "Loamy": "EXCELLENT", "Clay-Loam": "GOOD", "Sandy-Loam": "EXCELLENT", "Calcareous": "GOOD"},
+                "Dahbia":              {"Sandy": "GOOD", "Clay": "MODERATE", "Loamy": "GOOD", "Clay-Loam": "GOOD", "Sandy-Loam": "EXCELLENT", "Calcareous": "MODERATE"},
+                "Meslala":             {"Sandy": "EXCELLENT", "Clay": "POOR", "Loamy": "GOOD", "Clay-Loam": "MODERATE", "Sandy-Loam": "EXCELLENT", "Calcareous": "GOOD"},
+                "Arbequina":           {"Sandy": "GOOD", "Clay": "MODERATE", "Loamy": "EXCELLENT", "Clay-Loam": "GOOD", "Sandy-Loam": "EXCELLENT", "Calcareous": "GOOD"},
+            }
+            for variety, soils in SOIL_COMPAT.items():
+                for soil, fitness in soils.items():
+                    session.run(
+                        """
+                        MATCH (v:Variety {name: $variety}), (s:SoilType {name: $soil})
+                        CREATE (v)-[:SUITED_FOR {fitness: $fitness, notes: ""}]->(s)
+                        """,
+                        variety=variety, soil=soil, fitness=fitness
+                    )
+
+            # ── 8. Create Treatments ──────────────────────────────────────
+            print("Creating treatment nodes...")
+            treatments = [
+                {"name": "Copper Hydroxide", "type": "fungicide", "active_ingredient": "Copper hydroxide", "organic_approved": True, "timing": "preventive", "application_season": "Autumn-Winter"},
+                {"name": "Mancozeb", "type": "fungicide", "active_ingredient": "Mancozeb", "organic_approved": False, "timing": "preventive", "application_season": "Spring"},
+                {"name": "Kaolin Clay", "type": "repellent", "active_ingredient": "Kaolin", "organic_approved": True, "timing": "preventive", "application_season": "Summer"},
+                {"name": "Spinosad", "type": "insecticide", "active_ingredient": "Spinosad", "organic_approved": True, "timing": "curative", "application_season": "Summer-Autumn"},
+                {"name": "Dimethoate", "type": "insecticide", "active_ingredient": "Dimethoate", "organic_approved": False, "timing": "curative", "application_season": "Autumn"},
+                {"name": "Trichoderma", "type": "biological", "active_ingredient": "Trichoderma harzianum", "organic_approved": True, "timing": "preventive", "application_season": "Spring"},
+            ]
+            for t in treatments:
+                session.run(
+                    """
+                    CREATE (:Treatment {
+                        name: $name, type: $type, active_ingredient: $active_ingredient,
+                        organic_approved: $organic_approved, timing: $timing,
+                        application_season: $application_season
+                    })
+                    """,
+                    **t
+                )
+
+            # ── 9. Link Diseases to Treatments ────────────────────────────
+            print("Linking diseases to treatments...")
+            DISEASE_TREATMENT_MAP = {
+                "Peacock Spot": [{"treatment": "Copper Hydroxide", "efficacy": "high", "priority": 1}, {"treatment": "Mancozeb", "efficacy": "medium", "priority": 2}],
+                "Anthracnose": [{"treatment": "Copper Hydroxide", "efficacy": "medium", "priority": 1}, {"treatment": "Mancozeb", "efficacy": "high", "priority": 2}],
+                "Olive Knot": [{"treatment": "Copper Hydroxide", "efficacy": "medium", "priority": 1}],
+                "Verticillium Wilt": [{"treatment": "Trichoderma", "efficacy": "medium", "priority": 1}],
+                "Olive Fruit Fly": [{"treatment": "Kaolin Clay", "efficacy": "high", "priority": 1}, {"treatment": "Spinosad", "efficacy": "high", "priority": 2}, {"treatment": "Dimethoate", "efficacy": "high", "priority": 3}],
+                "Olive Leaf Spot": [{"treatment": "Copper Hydroxide", "efficacy": "medium", "priority": 1}],
+            }
+            for disease, treatments_list in DISEASE_TREATMENT_MAP.items():
+                for link in treatments_list:
+                    session.run(
+                        """
+                        MATCH (d:Disease {name: $disease}), (t:Treatment {name: $treatment})
+                        CREATE (d)-[:TREATABLE_BY {efficacy: $efficacy, timing: "preventive", priority: $priority}]->(t)
+                        """,
+                        disease=disease, treatment=link["treatment"], efficacy=link["efficacy"], priority=link["priority"]
+                    )
+
+            # ── 10. Create Operation Templates ────────────────────────────
             print("Creating operation templates...")
             operation_templates = [
-                "IRRIGATION",
-                "FERTILIZER",
-                "PRUNING",
-                "HARVEST",
-                "PESTICIDE",
-                "FUNGICIDE",
+                "IRRIGATION", "FERTILIZER", "PRUNING",
+                "HARVEST", "PESTICIDE", "FUNGICIDE",
             ]
             for op in operation_templates:
                 session.run(
@@ -118,25 +225,20 @@ def seed_database():
                     type=op
                 )
 
-            # ── 5. Create Parameters ─────────────────────────────────────
+            # ── 11. Create Parameters ─────────────────────────────────────
             print("Creating parameters...")
             parameters = [
-                # Irrigation
                 {"name": "Volume",          "unit": "Liters",      "type": "number"},
                 {"name": "Duration",        "unit": "Minutes",     "type": "number"},
-                # Fertilizer / Pesticide / Fungicide
                 {"name": "ProductName",     "unit": None,          "type": "text"},
                 {"name": "Quantity",        "unit": "kg",          "type": "number"},
-                # Pruning
                 {"name": "Technique",       "unit": None,          "type": "select",
                  "options": "Taille de formation,Taille de fructification,Taille de rajeunissement"},
                 {"name": "IntensityLevel",  "unit": None,          "type": "select",
                  "options": "Légère,Modérée,Sévère"},
-                # Harvest
                 {"name": "Method",          "unit": None,          "type": "select",
                  "options": "Manuel,Mécanique,Mixte"},
                 {"name": "YieldEstimate",   "unit": "kg/ha",       "type": "number"},
-                # Field-level requirements
                 {"name": "Variété",         "unit": None,          "type": "select",
                  "options": "Picholine Marocaine,Haouzia,Menara,Dahbia,Meslala,Arbequina"},
                 {"name": "Porte-greffe",    "unit": None,          "type": "text"},
@@ -161,7 +263,7 @@ def seed_database():
                         name=p["name"], unit=p.get("unit"), type=p["type"]
                     )
 
-            # ── 6. Link Operations to Parameters ────────────────────────
+            # ── 12. Link Operations to Parameters ────────────────────────
             print("Linking operations to required parameters...")
             op_param_map = {
                 "IRRIGATION": ["Volume", "Duration"],
@@ -181,7 +283,7 @@ def seed_database():
                         op_type=op_type, param_name=param_name
                     )
 
-            # ── 7. Link All Varieties to All Operations ─────────────────
+            # ── 13. Link All Varieties to All Operations ─────────────────
             print("Linking all olive varieties to operation templates...")
             for v in OLIVE_VARIETIES:
                 for op_type in operation_templates:
@@ -193,7 +295,7 @@ def seed_database():
                         name=v["name"], op_type=op_type
                     )
 
-            # ── 8. Field Requirements for all Varieties ──────────────────
+            # ── 14. Field Requirements for all Varieties ──────────────────
             print("Linking field requirements to all varieties...")
             field_req_params = [
                 "Variété", "Porte-greffe", "Texture du Sol",
