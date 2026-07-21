@@ -10,43 +10,43 @@ export const VARIETIES: Record<string, VarietyConfig> = {
   "Picholine Marocaine": {
     name: "Picholine Marocaine",
     chillingRequired: 400,
-    gddFlower: 450,
-    gddTotal: 1700,
+    gddFlower: 650,
+    gddTotal: 3400,
     origin: "Morocco"
   },
   "Haouzia": {
     name: "Haouzia",
-    chillingRequired: 350,
-    gddFlower: 420,
-    gddTotal: 1600,
+    chillingRequired: 300,
+    gddFlower: 620,
+    gddTotal: 3200,
     origin: "Morocco (INRA)"
   },
   "Menara": {
     name: "Menara",
-    chillingRequired: 350,
-    gddFlower: 430,
-    gddTotal: 1650,
+    chillingRequired: 300,
+    gddFlower: 630,
+    gddTotal: 3200,
     origin: "Morocco (INRA)"
   },
   "Dahbia": {
     name: "Dahbia",
-    chillingRequired: 300,
-    gddFlower: 390,
-    gddTotal: 1500,
+    chillingRequired: 250,
+    gddFlower: 580,
+    gddTotal: 2800,
     origin: "Morocco"
   },
   "Meslala": {
     name: "Meslala",
-    chillingRequired: 500,
-    gddFlower: 480,
-    gddTotal: 1800,
+    chillingRequired: 350,
+    gddFlower: 560,
+    gddTotal: 2600,
     origin: "Morocco"
   },
   "Arbequina": {
     name: "Arbequina",
     chillingRequired: 250,
-    gddFlower: 320,
-    gddTotal: 1400,
+    gddFlower: 550,
+    gddTotal: 3000,
     origin: "Spain"
   }
 };

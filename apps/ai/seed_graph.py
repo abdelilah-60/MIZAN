@@ -113,27 +113,27 @@ def seed_database():
             # ── 4. Create Phenological Stages ─────────────────────────────
             print("Creating phenological stage nodes...")
             stages = [
-                {"name": "Dormancy",      "order": 1},
-                {"name": "Bud Break",     "order": 2},
-                {"name": "Flowering",     "order": 3},
-                {"name": "Fruit Set",     "order": 4},
-                {"name": "Pit Hardening", "order": 5},
-                {"name": "Oil Accumulation", "order": 6},
-                {"name": "Maturation",    "order": 7},
-                {"name": "Harvest",       "order": 8},
+                {"name": "DORMANCE",      "name_fr": "Repos Végétatif",       "name_ar": "السكون الشتوي",  "order": 1, "gdd_start": 0,    "gdd_end": 200},
+                {"name": "DEBOURREMENT",  "name_fr": "Débourrement",          "name_ar": "تفتح البراعم",   "order": 2, "gdd_start": 200,  "gdd_end": 500},
+                {"name": "FLORAISON",     "name_fr": "Floraison",             "name_ar": "الإزهار",        "order": 3, "gdd_start": 500,  "gdd_end": 800},
+                {"name": "NOUAISON",      "name_fr": "Nouaison",              "name_ar": "العقد",          "order": 4, "gdd_start": 800,  "gdd_end": 1200},
+                {"name": "CROISSANCE",    "name_fr": "Grossissement du Fruit", "name_ar": "نمو الثمار",    "order": 5, "gdd_start": 1200, "gdd_end": 2200},
+                {"name": "VERAISON",      "name_fr": "Véraison",              "name_ar": "التلوين",        "order": 6, "gdd_start": 2200, "gdd_end": 2900},
+                {"name": "RECOLTE",       "name_fr": "Maturité / Récolte",    "name_ar": "النضج والجني",   "order": 7, "gdd_start": 2900, "gdd_end": 3500},
             ]
             for s in stages:
                 session.run(
-                    "CREATE (:Stage {name: $name, order: $order})",
-                    name=s["name"], order=s["order"]
+                    "CREATE (:Stage {name: $name, name_fr: $name_fr, name_ar: $name_ar, order: $order, gdd_start: $gdd_start, gdd_end: $gdd_end})",
+                    name=s["name"], name_fr=s["name_fr"], name_ar=s["name_ar"],
+                    order=s["order"], gdd_start=s["gdd_start"], gdd_end=s["gdd_end"]
                 )
 
             # ── 5. Create Kc relationships (Variety -> Stage) ─────────────
             print("Creating Kc crop coefficient relationships...")
             KC_DEFAULTS = {
-                "Dormancy": 0.45, "Bud Break": 0.50, "Flowering": 0.55,
-                "Fruit Set": 0.65, "Pit Hardening": 0.60, "Oil Accumulation": 0.55,
-                "Maturation": 0.50, "Harvest": 0.45,
+                "DORMANCE": 0.45, "DEBOURREMENT": 0.55, "FLORAISON": 0.60,
+                "NOUAISON": 0.65, "CROISSANCE": 0.70, "VERAISON": 0.55,
+                "RECOLTE": 0.50,
             }
             for v in OLIVE_VARIETIES:
                 for stage_name, kc in KC_DEFAULTS.items():

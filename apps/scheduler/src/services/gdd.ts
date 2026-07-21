@@ -289,8 +289,8 @@ export async function processFieldGdd(
   let predictedFloweringDate: Date | null = null;
   let predictedHarvestDate: Date | null = null;
 
-  const configFlowerGdd = stages.find(s => s.name === "FLORAISON")?.max_gdd || 700;
-  const configTotalGdd = stages.find(s => s.name === "RECOLTE")?.max_gdd || 3200;
+  const configFlowerGdd = stages.find(s => s.name === "FLORAISON")?.max_gdd || 800;
+  const configTotalGdd = stages.find(s => s.name === "RECOLTE")?.max_gdd || 3500;
 
   if (bioFixReached && accumulatedGdd > 0 && weatherData.length > 0) {
     const totalDaysSinceBioFix = bioFixDate ? Math.max(1, Math.floor((yesterday.getTime() - bioFixDate.getTime()) / (1000 * 60 * 60 * 24))) : 1;
