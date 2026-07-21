@@ -46,6 +46,84 @@ adminRoute.delete("/varieties/:name", async (c) => {
   }
 });
 
+const VARIETIES_CONFIG: Record<string, { gddFlower: number; gddTotal: number }> = {
+  "Picholine Marocaine": { gddFlower: 650, gddTotal: 3400 },
+  "Haouzia": { gddFlower: 620, gddTotal: 3200 },
+  "Menara": { gddFlower: 630, gddTotal: 3200 },
+  "Dahbia": { gddFlower: 580, gddTotal: 2800 },
+  "Meslala": { gddFlower: 560, gddTotal: 2600 },
+  "Arbequina": { gddFlower: 550, gddTotal: 3000 }
+};
+
+function getStageForGdd(variety: string, gdd: number): { stage: string; nextStageGdd: number | null } {
+  const config = VARIETIES_CONFIG[variety] || VARIETIES_CONFIG["Picholine Marocaine"];
+  const flowerStart = config.gddFlower * 0.4;
+  const nouaisonStart = config.gddFlower * 1.2;
+  const croissanceStart = config.gddFlower * 1.6;
+  const veraisonStart = config.gddTotal * 0.75;
+  const recolteStart = config.gddTotal;
+
+  if (gdd < flowerStart) return { stage: "DEBOURREMENT", nextStageGdd: flowerStart };
+  else if (gdd < nouaisonStart) return { stage: "FLORAISON", nextStageGdd: nouaisonStart };
+  else if (gdd < croissanceStart) return { stage: "NOUAISON", nextStageGdd: croissanceStart };
+  else if (gdd < veraisonStart) return { stage: "CROISSANCE", nextStageGdd: veraisonStart };
+  else if (gdd < recolteStart) return { stage: "VERAISON", nextStageGdd: recolteStart };
+  else return { stage: "RECOLTE", nextStageGdd: null };
+}
+
+adminRoute.post("/recalculate-gdd", async (c) => {
+  try {
+    const fields = await prisma.field.findMany({
+      include: {
+        seasonSummary: true
+      }
+    });
+
+    let updatedCount = 0;
+    const results: any[] = [];
+
+    for (const field of fields) {
+      const summary = field.seasonSummary?.[0];
+      if (summary) {
+        const stageInfo = getStageForGdd(field.cropType, summary.accumulatedGdd);
+        const gddToNextStage = stageInfo.nextStageGdd !== null ? Math.max(0, stageInfo.nextStageGdd - summary.accumulatedGdd) : null;
+        
+        await prisma.fieldSeasonSummary.update({
+          where: { id: summary.id },
+          data: {
+            currentStage: stageInfo.stage,
+            gddToNextStage: gddToNextStage,
+            lastUpdated: new Date()
+          }
+        });
+
+        const latestDaily = await prisma.fieldDailyMetrics.findFirst({
+          where: { fieldId: field.id },
+          orderBy: { date: "desc" }
+        });
+
+        if (latestDaily) {
+          await prisma.fieldDailyMetrics.update({
+            where: { id: latestDaily.id },
+            data: {
+              currentStage: stageInfo.stage,
+              gddToNextStage: gddToNextStage
+            }
+          });
+        }
+
+        updatedCount++;
+        results.push({ fieldName: field.name, cropType: field.cropType, accumulatedGdd: summary.accumulatedGdd, newStage: stageInfo.stage });
+      }
+    }
+
+    return c.json({ status: "success", message: `Successfully recalculated GDD stage for ${updatedCount} fields.`, updatedCount, results });
+  } catch (err: any) {
+    console.error("Recalculate error:", err);
+    return c.json({ error: err.message }, 500);
+  }
+});
+
 adminRoute.all("/*", async (c) => {
   // c.req.path contains the full URL path, e.g. /api/admin/varieties
   // We want to forward it exactly to the AI service

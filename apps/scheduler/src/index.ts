@@ -14,12 +14,13 @@ async function runScheduler() {
     let chillingRequired = 350;
     
     try {
-      const stagesRes = await fetch("http://localhost:8000/api/ontology/stages");
+      const aiBaseUrl = process.env.AI_SERVICE_URL || "https://mizan-ai-tau.vercel.app";
+      const stagesRes = await fetch(`${aiBaseUrl}/api/ontology/stages`);
       if (stagesRes.ok) {
         stages = await stagesRes.json();
       }
       
-      const chillingRes = await fetch("http://localhost:8000/api/ontology/chilling-requirement");
+      const chillingRes = await fetch(`${aiBaseUrl}/api/ontology/chilling-requirement`);
       if (chillingRes.ok) {
         const cData = await chillingRes.json();
         chillingRequired = cData.chilling_hours;
