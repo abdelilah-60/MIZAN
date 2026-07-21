@@ -13,11 +13,8 @@ export function useFieldWeather({ token }: UseFieldWeatherProps) {
   const [loadingWeather, setLoadingWeather] = useState<Record<string, boolean>>({});
 
   const fetchWeather = useCallback(
-    async (field: Field) => {
-      if (weatherData[field.id]) {
-        const copy = { ...weatherData };
-        delete copy[field.id];
-        setWeatherData(copy);
+    async (field: Field, force = false) => {
+      if (!force && (weatherData[field.id] || loadingWeather[field.id])) {
         return;
       }
 
@@ -41,7 +38,7 @@ export function useFieldWeather({ token }: UseFieldWeatherProps) {
         setLoadingWeather((prev) => ({ ...prev, [field.id]: false }));
       }
     },
-    [token, weatherData]
+    [token, weatherData, loadingWeather]
   );
 
   return { weatherData, loadingWeather, fetchWeather };

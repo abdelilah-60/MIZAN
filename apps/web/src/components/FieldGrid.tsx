@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import type { Field, WeatherData } from "../lib/types";
 
 interface FieldGridProps {
@@ -37,6 +38,15 @@ export function FieldGrid({
   onDeleteField,
   debouncedSearchQuery,
 }: FieldGridProps) {
+  // Automatically fetch weather for all fields as soon as they load
+  useEffect(() => {
+    fields.forEach((field) => {
+      if (!weatherData[field.id]) {
+        onFetchWeather(field);
+      }
+    });
+  }, [fields, weatherData, onFetchWeather]);
+
   if (fields.length === 0) {
     return (
       <div className="text-center py-16 text-slate-500 bg-slate-900/40 border border-white/5 rounded-2xl animate-in fade-in max-w-xl mx-auto w-full">
@@ -199,25 +209,63 @@ export function FieldGrid({
                 </div>
               </div>
 
-              {/* Weather Info Widget (Full Width) */}
-              <div className="bg-slate-950/40 border border-white/5 rounded-xl p-3 flex flex-col justify-between min-h-[60px] mb-4">
-                <span className="text-[8px] text-slate-500 font-bold uppercase tracking-wider mb-1">Climat (الطقس)</span>
-                {weather?.current ? (
-                  <span className="text-[10px] text-slate-300 font-semibold flex items-center gap-1">
-                    <span>🌡️</span>
-                    {weather.current.temperature_2m.toFixed(1)}°C
+              {/* Weather Info Widget (Full Width & Auto-Loaded) */}
+              <div className="bg-slate-950/50 border border-white/10 rounded-xl p-3.5 flex flex-col justify-between mb-4 shadow-sm backdrop-blur-md">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[10px] text-emerald-400 font-bold uppercase tracking-wider flex items-center gap-1.5">
+                    <span className="text-xs">🌤️</span> Climat en direct (الطقس الفعلي)
                   </span>
+                  {weather?.current && (
+                    <span className="text-[9px] text-slate-500 font-mono font-semibold">
+                      Station Locale
+                    </span>
+                  )}
+                </div>
+
+                {weather?.current ? (
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 border-t border-white/5 text-[10px]">
+                    <div className="flex items-center gap-2 bg-slate-900/60 p-2 rounded-lg border border-white/5">
+                      <span className="text-base">🌡️</span>
+                      <div className="flex flex-col">
+                        <span className="text-[8px] text-slate-500 font-bold uppercase">الحرارة</span>
+                        <span className="text-white font-extrabold font-mono text-xs">
+                          {weather.current.temperature_2m.toFixed(1)}°C
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 bg-slate-900/60 p-2 rounded-lg border border-white/5">
+                      <span className="text-base">💧</span>
+                      <div className="flex flex-col">
+                        <span className="text-[8px] text-slate-500 font-bold uppercase">الرطوبة</span>
+                        <span className="text-sky-300 font-extrabold font-mono text-xs">
+                          {weather.current.relative_humidity_2m}%
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 bg-slate-900/60 p-2 rounded-lg border border-white/5">
+                      <span className="text-base">💨</span>
+                      <div className="flex flex-col">
+                        <span className="text-[8px] text-slate-500 font-bold uppercase">الرياح</span>
+                        <span className="text-teal-300 font-extrabold font-mono text-xs">
+                          {weather.current.wind_speed_10m} <span className="text-[8px]">km/h</span>
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 bg-slate-900/60 p-2 rounded-lg border border-white/5">
+                      <span className="text-base">🌧️</span>
+                      <div className="flex flex-col">
+                        <span className="text-[8px] text-slate-500 font-bold uppercase">التساقطات</span>
+                        <span className="text-blue-300 font-extrabold font-mono text-xs">
+                          {weather.current.precipitation} <span className="text-[8px]">mm</span>
+                        </span>
+                      </div>
+                    </div>
+                  </div>
                 ) : (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onFetchWeather(field);
-                    }}
-                    className="text-[9px] text-emerald-400 hover:underline text-left font-medium flex items-center gap-1"
-                  >
-                    Charger
-                  </button>
+                  <div className="flex items-center gap-2.5 py-2.5 px-3 bg-slate-900/40 rounded-lg text-[10px] text-slate-400 font-medium animate-pulse border border-white/5">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+                    <span>Chargement des données météo en direct... (جارٍ جلب الطقس)</span>
+                  </div>
                 )}
               </div>
 

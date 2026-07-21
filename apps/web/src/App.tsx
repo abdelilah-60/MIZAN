@@ -8,7 +8,6 @@ import { useFieldAgronomy } from "./hooks/useFieldAgronomy";
 import { useToast } from "./hooks/useToast";
 import { Header } from "./components/Header";
 import { SidebarLeft } from "./components/SidebarLeft";
-import { SidebarRight } from "./components/SidebarRight";
 import { StatusBox } from "./components/StatusBox";
 import { FieldForm } from "./components/FieldForm";
 import { FieldGrid } from "./components/FieldGrid";
@@ -118,8 +117,6 @@ export default function App() {
     ((fieldData.activeTab === "fields" && fieldData.fields.length > 0) ||
       fieldData.currentPage > 1);
 
-  const hasSelectedField = !!fieldData.selectedFieldId;
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-emerald-950 text-white pb-20">
       <OfflineBanner />
@@ -152,8 +149,8 @@ export default function App() {
             />
           </div>
 
-          {/* COLUMN 2 & 3: Main center workspace (col-span shifts dynamically) */}
-          <div className={`${hasSelectedField || fieldData.activeTab !== "fields" ? "lg:col-span-9" : "lg:col-span-6"} space-y-6`}>
+          {/* COLUMN 2 & 3: Main center workspace */}
+          <div className="lg:col-span-9 space-y-6">
             
             {/* ========== FIELDS TAB ========== */}
             {fieldData.activeTab === "fields" && (
@@ -277,21 +274,6 @@ export default function App() {
               <Pagination currentPage={fieldData.currentPage} totalPages={fieldData.totalPages} onPageChange={fieldData.setCurrentPage} />
             )}
           </div>
-
-          {/* COLUMN 3: Right Sidebar (lg:col-span-3) - Hidden when viewing specific field or not in fields tab */}
-          {!hasSelectedField && fieldData.activeTab === "fields" && (
-            <div className="lg:col-span-3">
-              <SidebarRight
-                fields={fieldData.fields}
-                insightsData={fieldInsights.insightsData}
-                weatherData={fieldWeather.weatherData}
-                onSelectField={fieldData.setSelectedFieldId}
-                onFetchWeather={fieldWeather.fetchWeather}
-                onFetchInsights={fieldInsights.fetchInsights}
-              />
-            </div>
-          )}
-
         </div>
       </main>
 
