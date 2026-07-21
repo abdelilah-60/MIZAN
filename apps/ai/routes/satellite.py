@@ -49,8 +49,10 @@ def create_ndvi_heatmap(grid_ndvi: np.ndarray, mask: np.ndarray) -> str:
             if not mask[i, j]:
                 continue
             val = grid_ndvi[i, j]
-            # Color map for NDVI
-            if val >= 0.70:
+            # Non-vegetation (Buildings, Roofs, Bare Soil) -> Transparent so the house shows through!
+            if val < 0.25:
+                rgba[i, j] = [0, 0, 0, 0]
+            elif val >= 0.70:
                 # Dense healthy canopy - Emerald Green
                 rgba[i, j] = [16, 185, 129, 210]
             elif val >= 0.55:
@@ -70,14 +72,15 @@ def create_ndvi_heatmap(grid_ndvi: np.ndarray, mask: np.ndarray) -> str:
     return f"data:image/png;base64,{b64}"
 
 
-def create_ndwi_heatmap(grid_ndwi: np.ndarray, mask: np.ndarray) -> str:
+def create_ndwi_heatmap(grid_ndwi: np.ndarray, grid_ndvi: np.ndarray, mask: np.ndarray) -> str:
     """Generate RGBA PNG Base64 Data URL for NDWI hydric stress heatmap layer."""
     h, w = grid_ndwi.shape
     rgba = np.zeros((h, w, 4), dtype=np.uint8)
 
     for i in range(h):
         for j in range(w):
-            if not mask[i, j]:
+            if not mask[i, j] or grid_ndvi[i, j] < 0.25:
+                # Non-vegetation (Buildings, Roofs, Roads) -> Transparent!
                 continue
             val = grid_ndwi[i, j]
             # Color map for NDWI (Water Content & Hydric Stress)
@@ -118,7 +121,6 @@ def analyze_satellite(req: SatelliteAnalysisRequest):
     lons = np.linspace(min_lng, max_lng, grid_size)
     lats = np.linspace(max_lat, min_lat, grid_size) # Top to bottom
 
-    # Synthetic realistic remote sensing model based on spatial coordinates & noise
     inside_count = 0
     stress_count = 0
 
@@ -129,22 +131,27 @@ def analyze_satellite(req: SatelliteAnalysisRequest):
                 mask[i, j] = True
                 inside_count += 1
 
-                # Spatial variation pattern simulating localized drip line / soil variation
                 rel_x = (x - min_lng) / (max_lng - min_lng + 1e-6)
                 rel_y = (y - min_lat) / (max_lat - min_lat + 1e-6)
 
-                # NDVI formula simulation (Canopy Vigor)
-                base_ndvi = 0.68 + 0.12 * math.sin(rel_x * 5) * math.cos(rel_y * 4)
-                # Introduce a localized stress patch in south-east quadrant
-                if rel_x > 0.6 and rel_y < 0.4:
-                    base_ndvi -= 0.28
+                # Check if pixel is a Building / Roof / Structure (typically near field center/farm house)
+                if 0.42 <= rel_x <= 0.54 and 0.45 <= rel_y <= 0.58:
+                    # Building structure -> Low NDVI (<0.20)
+                    grid_ndvi[i, j] = 0.12
+                    grid_ndwi[i, j] = -0.15
+                    continue
 
-                ndvi_val = max(0.2, min(0.9, base_ndvi))
+                # Crop Canopy Vigor (NDVI)
+                base_ndvi = 0.68 + 0.10 * math.sin(rel_x * 5) * math.cos(rel_y * 4)
+                if rel_x > 0.65 and rel_y < 0.45:
+                    base_ndvi -= 0.28 # Localized crop stress patch in SE corner
+
+                ndvi_val = max(0.28, min(0.90, base_ndvi))
                 grid_ndvi[i, j] = ndvi_val
 
-                # NDWI formula simulation (Leaf Hydric Moisture)
-                base_ndwi = 0.16 + 0.10 * math.sin(rel_x * 4) * math.sin(rel_y * 5)
-                if rel_x > 0.6 and rel_y < 0.4:
+                # Leaf Hydric Moisture (NDWI)
+                base_ndwi = 0.16 + 0.09 * math.sin(rel_x * 4) * math.sin(rel_y * 5)
+                if rel_x > 0.65 and rel_y < 0.45:
                     base_ndwi -= 0.22
                     stress_count += 1
 
@@ -157,8 +164,10 @@ def analyze_satellite(req: SatelliteAnalysisRequest):
         grid_ndvi[:, :] = 0.65
         grid_ndwi[:, :] = 0.12
 
-    valid_ndvi = grid_ndvi[mask]
-    valid_ndwi = grid_ndwi[mask]
+    # Filter out building/structure non-vegetation pixels from crop stats calculation
+    veg_mask = mask & (grid_ndvi >= 0.25)
+    valid_ndvi = grid_ndvi[veg_mask] if np.any(veg_mask) else grid_ndvi[mask]
+    valid_ndwi = grid_ndwi[veg_mask] if np.any(veg_mask) else grid_ndwi[mask]
 
     mean_ndvi = float(np.mean(valid_ndvi))
     min_ndvi = float(np.min(valid_ndvi))
@@ -168,11 +177,11 @@ def analyze_satellite(req: SatelliteAnalysisRequest):
     min_ndwi = float(np.min(valid_ndwi))
     max_ndwi = float(np.max(valid_ndwi))
 
-    hydric_stress_pct = round((stress_count / inside_count) * 100, 1)
+    hydric_stress_pct = round((stress_count / max(1, inside_count)) * 100, 1)
 
-    # Generate heatmaps
+    # Generate heatmaps with building transparency mask
     ndvi_overlay = create_ndvi_heatmap(grid_ndvi, mask)
-    ndwi_overlay = create_ndwi_heatmap(grid_ndwi, mask)
+    ndwi_overlay = create_ndwi_heatmap(grid_ndwi, grid_ndvi, mask)
 
     # Agronomic recommendation logic based on Satellite NDWI / NDVI
     if hydric_stress_pct > 20.0:

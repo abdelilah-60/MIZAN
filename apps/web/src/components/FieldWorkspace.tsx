@@ -502,7 +502,7 @@ export function FieldWorkspace({
 
           {/* Legend Banner when NDVI or NDWI is active */}
           {satelliteMode !== "SATELLITE" && (
-            <div className="absolute top-14 left-3 z-20 bg-slate-950/90 backdrop-blur-md border border-white/10 px-3 py-1.5 rounded-xl text-[9px] font-mono text-slate-300 flex items-center gap-3 shadow-xl animate-in fade-in">
+            <div className="absolute top-14 left-3 z-20 bg-slate-950/90 backdrop-blur-md border border-white/10 px-3 py-1.5 rounded-xl text-[9px] font-mono text-slate-300 flex items-center gap-3 shadow-xl animate-in fade-in flex-wrap">
               {satelliteMode === "NDVI" ? (
                 <>
                   <span className="font-bold text-emerald-400">دليل الخضرة:</span>
@@ -510,6 +510,7 @@ export function FieldWorkspace({
                   <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-lime-500"></span> جيدة (0.55-0.7)</span>
                   <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-500"></span> متوسطة (0.4-0.55)</span>
                   <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-500"></span> ضعيفة (&lt;0.4)</span>
+                  <span className="flex items-center gap-1 border-r border-white/15 pr-2 mr-1"><span className="w-2 h-2 rounded-full border border-slate-400 bg-transparent"></span> 🏠 مباني/تربة (مستثناة)</span>
                 </>
               ) : (
                 <>
@@ -518,6 +519,7 @@ export function FieldWorkspace({
                   <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-cyan-500"></span> رطوبة متوازنة</span>
                   <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-500"></span> جفاف خفيف</span>
                   <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-600"></span> إجهاد مائي حاد ⚠️</span>
+                  <span className="flex items-center gap-1 border-r border-white/15 pr-2 mr-1"><span className="w-2 h-2 rounded-full border border-slate-400 bg-transparent"></span> 🏠 مباني/تربة (مستثناة)</span>
                 </>
               )}
             </div>
