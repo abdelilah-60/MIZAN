@@ -46,7 +46,7 @@ interface SatelliteFieldCoverProps {
   satelliteData: any;
 }
 
-/* ─── Real High-Res ESRI Satellite Map Cover with Heatmap Overlays ──── */
+/* ─── Real High-Res ESRI Satellite Map Cover with Mask & Overlays ──── */
 function SatelliteFieldCover({ geoPolygon, satelliteMode, satelliteData }: SatelliteFieldCoverProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
@@ -82,14 +82,39 @@ function SatelliteFieldCover({ geoPolygon, satelliteMode, satelliteData }: Satel
     });
     mapRef.current = map;
 
-    // Add Polygon Layer with neon emerald border & subtle fill
+    // 1. Inverted Mask: Mask out EVERYTHING outside field boundaries
+    const worldOuterRing: [number, number][] = [
+      [-180, -90],
+      [180, -90],
+      [180, 90],
+      [-180, 90],
+      [-180, -90],
+    ];
+
+    const invertedMaskFeature = {
+      type: "Feature",
+      geometry: {
+        type: "Polygon",
+        coordinates: [worldOuterRing, coords],
+      },
+    };
+
+    L.geoJSON(invertedMaskFeature as any, {
+      style: {
+        color: "transparent",
+        fillColor: "#020617",
+        fillOpacity: 0.94,
+      },
+    }).addTo(map);
+
+    // 2. Add Polygon Layer for neon emerald border
     const polygonLayer = L.geoJSON(geoPolygon, {
       style: {
         color: "#10b981",
         weight: 3,
         opacity: 0.95,
-        fillColor: "#10b981",
-        fillOpacity: satelliteMode === "SATELLITE" ? 0.2 : 0.05,
+        fillColor: "transparent",
+        fillOpacity: 0,
       },
     }).addTo(map);
 
@@ -112,11 +137,11 @@ function SatelliteFieldCover({ geoPolygon, satelliteMode, satelliteData }: Satel
     });
     L.marker(center, { icon: pulseIcon }).addTo(map);
 
-    // Render Overlay Image for NDVI / NDWI if selected and data is ready
+    // 3. Render Overlay Image for NDVI / NDWI if selected and data is ready
     if (satelliteMode === "NDVI" && satelliteData?.ndvi?.overlayDataUrl && bounds.isValid()) {
-      L.imageOverlay(satelliteData.ndvi.overlayDataUrl, bounds, { opacity: 0.85 }).addTo(map);
+      L.imageOverlay(satelliteData.ndvi.overlayDataUrl, bounds, { opacity: 0.88 }).addTo(map);
     } else if (satelliteMode === "NDWI" && satelliteData?.ndwi?.overlayDataUrl && bounds.isValid()) {
-      L.imageOverlay(satelliteData.ndwi.overlayDataUrl, bounds, { opacity: 0.85 }).addTo(map);
+      L.imageOverlay(satelliteData.ndwi.overlayDataUrl, bounds, { opacity: 0.88 }).addTo(map);
     }
 
     return () => {
@@ -169,9 +194,13 @@ export function FieldWorkspace({
   useEffect(() => {
     if (field?.geoPolygon) {
       setLoadingSatellite(true);
+      const token = localStorage.getItem("token");
       fetch("/api/satellite/analyze", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
         body: JSON.stringify({
           geoPolygon: field.geoPolygon,
           cropType: field.cropType,
@@ -180,7 +209,7 @@ export function FieldWorkspace({
       })
         .then((res) => res.json())
         .then((data) => {
-          if (data.status === "success") {
+          if (data.status === "success" || data.ndvi) {
             setSatelliteData(data);
           }
         })
