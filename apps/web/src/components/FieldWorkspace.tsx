@@ -1,4 +1,5 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
+import L from "leaflet";
 import type {
   Field,
   WeatherData,
@@ -39,125 +40,91 @@ interface FieldWorkspaceProps {
 
 type WorkspaceTab = "agronomy" | "insights" | "operations";
 
-/* ─── Lightweight SVG polygon cover ────────────────────────── */
-function PolygonCover({ geoPolygon }: { geoPolygon?: any }) {
-  const svgData = useMemo(() => {
-    if (!geoPolygon?.coordinates?.[0]) return null;
+/* ─── Real High-Res ESRI Satellite Map Cover ────────────────────────── */
+function SatelliteFieldCover({ geoPolygon }: { geoPolygon?: any }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<L.Map | null>(null);
 
-    const coords: [number, number][] = geoPolygon.coordinates[0]; // [lng, lat][]
-    if (coords.length < 3) return null;
+  useEffect(() => {
+    if (!containerRef.current || !geoPolygon?.coordinates?.[0]) return;
 
-    // Compute bounding box
-    let minLng = Infinity, maxLng = -Infinity, minLat = Infinity, maxLat = -Infinity;
-    for (const [lng, lat] of coords) {
-      if (lng < minLng) minLng = lng;
-      if (lng > maxLng) maxLng = lng;
-      if (lat < minLat) minLat = lat;
-      if (lat > maxLat) maxLat = lat;
+    if (mapRef.current) {
+      mapRef.current.remove();
+      mapRef.current = null;
     }
 
-    const padFactor = 0.15;
-    const dLng = (maxLng - minLng) * padFactor || 0.001;
-    const dLat = (maxLat - minLat) * padFactor || 0.001;
-    minLng -= dLng; maxLng += dLng;
-    minLat -= dLat; maxLat += dLat;
+    const coords = geoPolygon.coordinates[0];
+    if (coords.length < 3) return;
 
-    const width = 800;
-    const height = 260;
-    const scaleX = width / (maxLng - minLng);
-    const scaleY = height / (maxLat - minLat);
+    // ESRI World Imagery Satellite Tile Layer (High Resolution Aerial)
+    const satelliteTile = L.tileLayer(
+      "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+      {
+        attribution: "Tiles &copy; Esri",
+        maxZoom: 19,
+      }
+    );
 
-    // Project coords to SVG space (flip Y because lat grows up but SVG Y grows down)
-    const points = coords.map(([lng, lat]) => {
-      const x = (lng - minLng) * scaleX;
-      const y = height - (lat - minLat) * scaleY;
-      return `${x.toFixed(1)},${y.toFixed(1)}`;
-    }).join(" ");
+    // Initialize Map centered on field
+    const map = L.map(containerRef.current, {
+      layers: [satelliteTile],
+      zoomControl: false,
+      attributionControl: false,
+      scrollWheelZoom: false,
+      doubleClickZoom: true,
+      dragging: true,
+    });
+    mapRef.current = map;
 
-    // Compute centroid for label position
-    const cx = coords.reduce((s, c) => s + c[0], 0) / coords.length;
-    const cy = coords.reduce((s, c) => s + c[1], 0) / coords.length;
-    const labelX = (cx - minLng) * scaleX;
-    const labelY = height - (cy - minLat) * scaleY;
+    // Add Polygon Layer with neon emerald border & subtle fill
+    const polygonLayer = L.geoJSON(geoPolygon, {
+      style: {
+        color: "#10b981",
+        weight: 3,
+        opacity: 0.95,
+        fillColor: "#10b981",
+        fillOpacity: 0.25,
+      },
+    }).addTo(map);
 
-    return { points, width, height, labelX, labelY };
+    // Get polygon bounds and fit map perfectly
+    const bounds = polygonLayer.getBounds();
+    if (bounds.isValid()) {
+      map.fitBounds(bounds, { padding: [30, 30] });
+    }
+
+    // Add pulsing centroid pin
+    const center = bounds.getCenter();
+    const pulseIcon = L.divIcon({
+      className: "custom-pulse-marker",
+      html: `<div class="relative flex items-center justify-center">
+        <div class="w-6 h-6 rounded-full bg-emerald-400/40 animate-ping absolute"></div>
+        <div class="w-3.5 h-3.5 rounded-full bg-emerald-400 border-2 border-slate-950 shadow-lg"></div>
+      </div>`,
+      iconSize: [24, 24],
+      iconAnchor: [12, 12],
+    });
+    L.marker(center, { icon: pulseIcon }).addTo(map);
+
+    return () => {
+      if (mapRef.current) {
+        mapRef.current.remove();
+        mapRef.current = null;
+      }
+    };
   }, [geoPolygon]);
 
   return (
     <div className="absolute inset-0 overflow-hidden">
-      {/* Gradient background */}
-      <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-emerald-950/60 to-slate-950" />
-
-      {/* Grid pattern */}
-      <div
-        className="absolute inset-0 opacity-10"
-        style={{
-          backgroundImage: "linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px)",
-          backgroundSize: "40px 40px",
-        }}
-      />
-
-      {/* SVG Polygon */}
-      {svgData && (
-        <svg
-          viewBox={`0 0 ${svgData.width} ${svgData.height}`}
-          className="absolute inset-0 w-full h-full"
-          preserveAspectRatio="xMidYMid meet"
-        >
-          <defs>
-            <linearGradient id="polyFill" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#10b981" stopOpacity="0.15" />
-              <stop offset="100%" stopColor="#06b6d4" stopOpacity="0.08" />
-            </linearGradient>
-            <filter id="glow">
-              <feGaussianBlur stdDeviation="4" result="blur" />
-              <feMerge>
-                <feMergeNode in="blur" />
-                <feMergeNode in="SourceGraphic" />
-              </feMerge>
-            </filter>
-          </defs>
-          {/* Shadow polygon */}
-          <polygon
-            points={svgData.points}
-            fill="url(#polyFill)"
-            stroke="rgba(16,185,129,0.12)"
-            strokeWidth="1"
-          />
-          {/* Main polygon with glow */}
-          <polygon
-            points={svgData.points}
-            fill="url(#polyFill)"
-            stroke="#10b981"
-            strokeWidth="2"
-            strokeLinejoin="round"
-            filter="url(#glow)"
-            className="animate-pulse"
-            style={{ animationDuration: "4s" }}
-          />
-          {/* Corner dots */}
-          {svgData.points.split(" ").map((pt, i) => {
-            const [x, y] = pt.split(",").map(Number);
-            return (
-              <circle
-                key={i}
-                cx={x}
-                cy={y}
-                r="3"
-                fill="#10b981"
-                stroke="#064e3b"
-                strokeWidth="1.5"
-              />
-            );
-          })}
-          {/* Center marker */}
-          <circle cx={svgData.labelX} cy={svgData.labelY} r="6" fill="#10b981" opacity="0.3" />
-          <circle cx={svgData.labelX} cy={svgData.labelY} r="3" fill="#10b981" />
-        </svg>
-      )}
-
-      {/* Bottom gradient fade */}
-      <div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-slate-950 to-transparent" />
+      <div ref={containerRef} className="w-full h-full z-0" />
+      {/* Subtle UI gradient overlays */}
+      <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/20 to-transparent pointer-events-none z-10" />
+      <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-slate-950 to-transparent pointer-events-none z-10" />
+      {/* Satellite Badge */}
+      <div className="absolute top-3 right-12 z-20 bg-slate-950/80 backdrop-blur-md border border-white/10 px-2.5 py-1 rounded-full text-[9px] font-bold text-emerald-400 flex items-center gap-1.5 shadow-lg">
+        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+        <span>Satellite ESRI Live (أقمار صناعية)</span>
+      </div>
     </div>
   );
 }
@@ -394,9 +361,9 @@ export function FieldWorkspace({
       {/* Header Card with SVG Cover, Info & Tabs */}
       <div className="rounded-3xl overflow-hidden border border-white/10 shadow-2xl bg-slate-950">
 
-        {/* SVG Polygon Cover — no Leaflet, no z-index issues */}
-        <div className="relative w-full h-[160px] md:h-[200px]">
-          <PolygonCover geoPolygon={field.geoPolygon} />
+        {/* Live Satellite Map Cover */}
+        <div className="relative w-full h-[200px] md:h-[250px]">
+          <SatelliteFieldCover geoPolygon={field.geoPolygon} />
 
           {/* Close Button */}
           <button
