@@ -40,8 +40,14 @@ interface FieldWorkspaceProps {
 
 type WorkspaceTab = "agronomy" | "insights" | "operations";
 
-/* ─── Real High-Res ESRI Satellite Map Cover ────────────────────────── */
-function SatelliteFieldCover({ geoPolygon }: { geoPolygon?: any }) {
+interface SatelliteFieldCoverProps {
+  geoPolygon?: any;
+  satelliteMode: "SATELLITE" | "NDVI" | "NDWI";
+  satelliteData: any;
+}
+
+/* ─── Real High-Res ESRI Satellite Map Cover with Heatmap Overlays ──── */
+function SatelliteFieldCover({ geoPolygon, satelliteMode, satelliteData }: SatelliteFieldCoverProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
 
@@ -83,7 +89,7 @@ function SatelliteFieldCover({ geoPolygon }: { geoPolygon?: any }) {
         weight: 3,
         opacity: 0.95,
         fillColor: "#10b981",
-        fillOpacity: 0.25,
+        fillOpacity: satelliteMode === "SATELLITE" ? 0.2 : 0.05,
       },
     }).addTo(map);
 
@@ -106,13 +112,20 @@ function SatelliteFieldCover({ geoPolygon }: { geoPolygon?: any }) {
     });
     L.marker(center, { icon: pulseIcon }).addTo(map);
 
+    // Render Overlay Image for NDVI / NDWI if selected and data is ready
+    if (satelliteMode === "NDVI" && satelliteData?.ndvi?.overlayDataUrl && bounds.isValid()) {
+      L.imageOverlay(satelliteData.ndvi.overlayDataUrl, bounds, { opacity: 0.85 }).addTo(map);
+    } else if (satelliteMode === "NDWI" && satelliteData?.ndwi?.overlayDataUrl && bounds.isValid()) {
+      L.imageOverlay(satelliteData.ndwi.overlayDataUrl, bounds, { opacity: 0.85 }).addTo(map);
+    }
+
     return () => {
       if (mapRef.current) {
         mapRef.current.remove();
         mapRef.current = null;
       }
     };
-  }, [geoPolygon]);
+  }, [geoPolygon, satelliteMode, satelliteData]);
 
   return (
     <div className="absolute inset-0 overflow-hidden">
@@ -120,11 +133,6 @@ function SatelliteFieldCover({ geoPolygon }: { geoPolygon?: any }) {
       {/* Subtle UI gradient overlays */}
       <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/20 to-transparent pointer-events-none z-10" />
       <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-slate-950 to-transparent pointer-events-none z-10" />
-      {/* Satellite Badge */}
-      <div className="absolute top-3 right-12 z-20 bg-slate-950/80 backdrop-blur-md border border-white/10 px-2.5 py-1 rounded-full text-[9px] font-bold text-emerald-400 flex items-center gap-1.5 shadow-lg">
-        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-        <span>Satellite ESRI Live (أقمار صناعية)</span>
-      </div>
     </div>
   );
 }
@@ -153,6 +161,34 @@ export function FieldWorkspace({
   onClose,
 }: FieldWorkspaceProps) {
   const [activeTab, setActiveTab] = useState<WorkspaceTab>("agronomy");
+  const [satelliteMode, setSatelliteMode] = useState<"SATELLITE" | "NDVI" | "NDWI">("SATELLITE");
+  const [satelliteData, setSatelliteData] = useState<any>(null);
+  const [loadingSatellite, setLoadingSatellite] = useState<boolean>(false);
+
+  // Auto-fetch satellite spectral data for field
+  useEffect(() => {
+    if (field?.geoPolygon) {
+      setLoadingSatellite(true);
+      fetch("/api/satellite/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          geoPolygon: field.geoPolygon,
+          cropType: field.cropType,
+          areaHa: field.area
+        })
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.status === "success") {
+            setSatelliteData(data);
+          }
+        })
+        .catch((err) => console.error("Satellite fetch error:", err))
+        .finally(() => setLoadingSatellite(false));
+    }
+  }, [field]);
+
   const farm = farms.find((f) => f.id === field.farmId);
   const summary = field.seasonSummary?.[0];
 
@@ -362,13 +398,72 @@ export function FieldWorkspace({
       <div className="rounded-3xl overflow-hidden border border-white/10 shadow-2xl bg-slate-950">
 
         {/* Live Satellite Map Cover */}
-        <div className="relative w-full h-[200px] md:h-[250px]">
-          <SatelliteFieldCover geoPolygon={field.geoPolygon} />
+        <div className="relative w-full h-[220px] md:h-[270px]">
+          <SatelliteFieldCover
+            geoPolygon={field.geoPolygon}
+            satelliteMode={satelliteMode}
+            satelliteData={satelliteData}
+          />
+
+          {/* Layer Switcher Controls */}
+          <div className="absolute top-3 left-3 right-14 z-20 flex items-center justify-between pointer-events-auto">
+            <div className="bg-slate-950/85 backdrop-blur-md border border-white/15 rounded-xl p-1 flex items-center gap-1 shadow-2xl">
+              <button
+                type="button"
+                onClick={() => setSatelliteMode("SATELLITE")}
+                className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all flex items-center gap-1.5 ${
+                  satelliteMode === "SATELLITE"
+                    ? "bg-emerald-500 text-slate-950 shadow-md font-black"
+                    : "text-slate-300 hover:text-white hover:bg-white/5"
+                }`}
+              >
+                <span>🛰️</span>
+                <span>طبيعي (Satellite)</span>
+                {loadingSatellite && <span className="w-1.5 h-1.5 rounded-full bg-slate-950 animate-ping" />}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setSatelliteMode("NDVI")}
+                className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all flex items-center gap-1.5 ${
+                  satelliteMode === "NDVI"
+                    ? "bg-emerald-400 text-slate-950 shadow-md font-black"
+                    : "text-slate-300 hover:text-white hover:bg-white/5"
+                }`}
+              >
+                <span>🌿</span>
+                <span>صحة الكلوروفيل (NDVI)</span>
+                {satelliteData?.ndvi && (
+                  <span className="bg-slate-950/40 text-slate-950 px-1.5 py-0.2 rounded font-mono text-[9px]">
+                    {satelliteData.ndvi.mean}
+                  </span>
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setSatelliteMode("NDWI")}
+                className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all flex items-center gap-1.5 ${
+                  satelliteMode === "NDWI"
+                    ? "bg-blue-500 text-white shadow-md font-black"
+                    : "text-slate-300 hover:text-white hover:bg-white/5"
+                }`}
+              >
+                <span>💧</span>
+                <span>الإجهاد المائي (NDWI)</span>
+                {satelliteData?.ndwi && (
+                  <span className="bg-slate-950/40 text-white px-1.5 py-0.2 rounded font-mono text-[9px]">
+                    {satelliteData.ndwi.hydricStressPct}%
+                  </span>
+                )}
+              </button>
+            </div>
+          </div>
 
           {/* Close Button */}
           <button
             onClick={onClose}
-            className="absolute top-3 right-3 bg-slate-950/70 hover:bg-slate-800 border border-white/15 hover:border-white/25 text-white font-bold p-2 rounded-full transition-all z-10 shadow-lg active:scale-95 backdrop-blur-sm"
+            className="absolute top-3 right-3 bg-slate-950/70 hover:bg-slate-800 border border-white/15 hover:border-white/25 text-white font-bold p-2 rounded-full transition-all z-20 shadow-lg active:scale-95 backdrop-blur-sm"
             title="Fermer / إغلاق"
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -376,13 +471,36 @@ export function FieldWorkspace({
             </svg>
           </button>
 
+          {/* Legend Banner when NDVI or NDWI is active */}
+          {satelliteMode !== "SATELLITE" && (
+            <div className="absolute top-14 left-3 z-20 bg-slate-950/90 backdrop-blur-md border border-white/10 px-3 py-1.5 rounded-xl text-[9px] font-mono text-slate-300 flex items-center gap-3 shadow-xl animate-in fade-in">
+              {satelliteMode === "NDVI" ? (
+                <>
+                  <span className="font-bold text-emerald-400">دليل الخضرة:</span>
+                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-500"></span> ممتازة (&gt;0.7)</span>
+                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-lime-500"></span> جيدة (0.55-0.7)</span>
+                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-500"></span> متوسطة (0.4-0.55)</span>
+                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-500"></span> ضعيفة (&lt;0.4)</span>
+                </>
+              ) : (
+                <>
+                  <span className="font-bold text-blue-400">دليل الإجهاد المائي:</span>
+                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-500"></span> ري مثالي</span>
+                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-cyan-500"></span> رطوبة متوازنة</span>
+                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-500"></span> جفاف خفيف</span>
+                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-600"></span> إجهاد مائي حاد ⚠️</span>
+                </>
+              )}
+            </div>
+          )}
+
           {/* Floating stats on cover */}
           <div className="absolute bottom-4 right-4 flex gap-2 z-10">
-            <div className="bg-slate-950/60 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/10 text-[10px] font-bold text-emerald-400">
+            <div className="bg-slate-950/70 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/10 text-[10px] font-bold text-emerald-400">
               {field.area} ha
             </div>
             {summary && (
-              <div className="bg-slate-950/60 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/10 text-[10px] font-bold text-amber-400">
+              <div className="bg-slate-950/70 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/10 text-[10px] font-bold text-amber-400">
                 {stageLabels[summary.currentStage] || summary.currentStage}
               </div>
             )}
@@ -435,6 +553,21 @@ export function FieldWorkspace({
               </div>
             )}
           </div>
+
+          {/* Satellite Agronomic Advice Banner */}
+          {satelliteData?.agronomicAdvice && (
+            <div className="mt-3 p-3 bg-slate-950/60 border border-emerald-500/20 rounded-2xl flex items-start gap-2.5 shadow-md">
+              <span className="text-lg">📡</span>
+              <div className="flex flex-col">
+                <span className="text-[9px] font-bold text-emerald-400 uppercase tracking-wider">
+                  تحليل الأقمار الصناعية (Sentinel-2A • 10m)
+                </span>
+                <p className="text-[11px] text-slate-200 font-medium leading-relaxed mt-0.5">
+                  {satelliteData.agronomicAdvice}
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* Tab Switcher */}
           <div className="flex gap-1.5 mt-4 pt-3 border-t border-white/5 overflow-x-auto scrollbar-none">

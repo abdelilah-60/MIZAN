@@ -5,6 +5,7 @@ from routes.ontology import router as ontology_router
 from routes.insights import router as insights_router
 from routes.admin import router as admin_router
 from routes.agronomy import router as agronomy_router
+from routes.satellite import router as satellite_router
 
 
 @asynccontextmanager
@@ -19,6 +20,7 @@ app.include_router(ontology_router)
 app.include_router(insights_router)
 app.include_router(admin_router)
 app.include_router(agronomy_router)
+app.include_router(satellite_router)
 
 @app.get("/")
 def read_root():
