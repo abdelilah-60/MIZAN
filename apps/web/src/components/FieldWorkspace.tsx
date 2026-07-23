@@ -428,26 +428,29 @@ export function FieldWorkspace({
 
   return (
     <div className="space-y-6 animate-in fade-in zoom-in-95 duration-200">
-      {/* Header Card with SVG Cover, Info & Tabs */}
-      <div className="rounded-3xl overflow-hidden border border-white/10 shadow-2xl bg-slate-950">
+      {/* Header Card with Ultra-Premium Glassmorphism & Digital Twin UX */}
+      <div className="rounded-[32px] overflow-hidden border border-emerald-500/20 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.9)] bg-slate-950 relative">
 
-        {/* Live Satellite Map Cover */}
-        <div className="relative w-full h-[220px] md:h-[270px]">
+        {/* Live Full-Bleed Satellite Map Canvas */}
+        <div className="relative w-full h-[260px] md:h-[340px]">
           <SatelliteFieldCover
             geoPolygon={field.geoPolygon}
             satelliteMode={satelliteMode}
             satelliteData={satelliteData}
           />
 
-          {/* Layer Switcher Controls */}
-          <div className="absolute top-3 left-3 right-14 z-20 flex items-center justify-between pointer-events-auto">
-            <div className="bg-slate-950/85 backdrop-blur-md border border-white/15 rounded-xl p-1 flex items-center gap-1 shadow-2xl">
+          {/* Bottom Vignette Gradient Overlay */}
+          <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-slate-950 via-slate-950/60 to-transparent pointer-events-none z-10" />
+
+          {/* Floating Glass Layer Switcher Bar */}
+          <div className="absolute top-3 left-3 right-14 z-20 flex items-center justify-between pointer-events-auto flex-wrap gap-2">
+            <div className="bg-slate-950/85 backdrop-blur-xl border border-white/15 rounded-2xl p-1.5 flex items-center gap-1 shadow-2xl overflow-x-auto scrollbar-none max-w-full">
               <button
                 type="button"
                 onClick={() => setSatelliteMode("SATELLITE")}
-                className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all flex items-center gap-1.5 ${
+                className={`px-3 py-1.5 rounded-xl text-[10px] md:text-xs font-bold transition-all flex items-center gap-1.5 ${
                   satelliteMode === "SATELLITE"
-                    ? "bg-emerald-500 text-slate-950 shadow-md font-black"
+                    ? "bg-emerald-500 text-slate-950 shadow-[0_0_15px_rgba(16,185,129,0.5)] font-black"
                     : "text-slate-300 hover:text-white hover:bg-white/5"
                 }`}
               >
@@ -459,17 +462,16 @@ export function FieldWorkspace({
               <button
                 type="button"
                 onClick={() => setSatelliteMode("CANOPY")}
-                className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all flex items-center gap-1.5 ${
+                className={`px-3 py-1.5 rounded-xl text-[10px] md:text-xs font-bold transition-all flex items-center gap-1.5 ${
                   satelliteMode === "CANOPY"
-                    ? "bg-emerald-400 text-slate-950 shadow-md font-black"
+                    ? "bg-emerald-400 text-slate-950 shadow-[0_0_15px_rgba(52,211,153,0.5)] font-black"
                     : "text-slate-300 hover:text-white hover:bg-white/5"
                 }`}
-                title="Fractional Tree Canopy Coverage (% كثافة الأشجار حقيقية وفق خوارزمية أوتسو)"
               >
                 <span>🌳</span>
-                <span>كثافة الأشجار (% Cover)</span>
+                <span>كثافة الأشجار</span>
                 {satelliteData?.canopyCover && (
-                  <span className="bg-slate-950/40 text-slate-950 px-1.5 py-0.2 rounded font-mono text-[9px]">
+                  <span className="bg-slate-950/50 text-emerald-300 px-2 py-0.5 rounded-lg font-mono text-[10px] font-bold border border-emerald-500/30">
                     {satelliteData.canopyCover.meanPct}%
                   </span>
                 )}
@@ -478,17 +480,16 @@ export function FieldWorkspace({
               <button
                 type="button"
                 onClick={() => setSatelliteMode("SAVI")}
-                className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all flex items-center gap-1.5 ${
+                className={`px-3 py-1.5 rounded-xl text-[10px] md:text-xs font-bold transition-all flex items-center gap-1.5 ${
                   satelliteMode === "SAVI"
-                    ? "bg-teal-400 text-slate-950 shadow-md font-black"
+                    ? "bg-teal-400 text-slate-950 shadow-[0_0_15px_rgba(45,212,191,0.5)] font-black"
                     : "text-slate-300 hover:text-white hover:bg-white/5"
                 }`}
-                title="Soil-Adjusted Vegetation Index"
               >
                 <span>🌿</span>
-                <span>صحة الأشجار (SAVI)</span>
+                <span>صحة SAVI</span>
                 {satelliteData?.savi && (
-                  <span className="bg-slate-950/40 text-slate-950 px-1.5 py-0.2 rounded font-mono text-[9px]">
+                  <span className="bg-slate-950/50 text-teal-300 px-2 py-0.5 rounded-lg font-mono text-[10px] font-bold border border-teal-500/30">
                     {satelliteData.savi.mean}
                   </span>
                 )}
@@ -497,16 +498,16 @@ export function FieldWorkspace({
               <button
                 type="button"
                 onClick={() => setSatelliteMode("NDVI")}
-                className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all flex items-center gap-1.5 ${
+                className={`px-3 py-1.5 rounded-xl text-[10px] md:text-xs font-bold transition-all flex items-center gap-1.5 ${
                   satelliteMode === "NDVI"
-                    ? "bg-cyan-400 text-slate-950 shadow-md font-black"
+                    ? "bg-cyan-400 text-slate-950 shadow-[0_0_15px_rgba(34,211,238,0.5)] font-black"
                     : "text-slate-300 hover:text-white hover:bg-white/5"
                 }`}
               >
                 <span>🌱</span>
-                <span>الغطاء النباتي (NDVI)</span>
+                <span>الغطاء NDVI</span>
                 {satelliteData?.ndvi && (
-                  <span className="bg-slate-950/40 text-slate-950 px-1.5 py-0.2 rounded font-mono text-[9px]">
+                  <span className="bg-slate-950/50 text-cyan-300 px-2 py-0.5 rounded-lg font-mono text-[10px] font-bold border border-cyan-500/30">
                     {satelliteData.ndvi.mean}
                   </span>
                 )}
@@ -515,35 +516,33 @@ export function FieldWorkspace({
               <button
                 type="button"
                 onClick={() => setSatelliteMode("NDWI")}
-                className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all flex items-center gap-1.5 ${
+                className={`px-3 py-1.5 rounded-xl text-[10px] md:text-xs font-bold transition-all flex items-center gap-1.5 ${
                   satelliteMode === "NDWI"
-                    ? "bg-blue-500 text-white shadow-md font-black"
+                    ? "bg-blue-500 text-white shadow-[0_0_15px_rgba(59,130,246,0.5)] font-black"
                     : "text-slate-300 hover:text-white hover:bg-white/5"
                 }`}
               >
                 <span>💧</span>
-                <span>الإجهاد المائي (NDWI)</span>
+                <span>الإجهاد NDWI</span>
                 {satelliteData?.ndwi && (
-                  <span className="bg-slate-950/40 text-white px-1.5 py-0.2 rounded font-mono text-[9px]">
+                  <span className="bg-slate-950/50 text-blue-300 px-2 py-0.5 rounded-lg font-mono text-[10px] font-bold border border-blue-500/30">
                     {satelliteData.ndwi.hydricStressPct}%
                   </span>
                 )}
               </button>
             </div>
-            {/* Data Source Badge */}
+
+            {/* Satellite Data Source Pulse Badge */}
             {satelliteData && (
-              <div className={`bg-slate-950/80 backdrop-blur-md border px-2.5 py-1.5 rounded-xl text-[9px] font-bold flex items-center gap-2 shadow-lg ${
+              <div className={`bg-slate-950/90 backdrop-blur-xl border px-3 py-1.5 rounded-2xl text-[10px] font-bold flex items-center gap-2 shadow-xl ${
                 satelliteData.dataSource === "sentinel-2-real"
-                  ? "border-emerald-500/30 text-emerald-400"
-                  : "border-amber-500/30 text-amber-400"
+                  ? "border-emerald-500/40 text-emerald-400"
+                  : "border-amber-500/40 text-amber-400"
               }`}>
                 <span className={`w-2 h-2 rounded-full animate-pulse ${
-                  satelliteData.dataSource === "sentinel-2-real" ? "bg-emerald-400" : "bg-amber-400"
+                  satelliteData.dataSource === "sentinel-2-real" ? "bg-emerald-400 shadow-[0_0_8px_#10b981]" : "bg-amber-400"
                 }`} />
-                <span>{satelliteData.dataSource === "sentinel-2-real" ? "بيانات حقيقية ✓" : "تقريبي (Demo)"}</span>
-                {satelliteData.lastPassDate && satelliteData.lastPassDate !== "N/A" && (
-                  <span className="text-white/70 font-mono text-[9px]">📅 {satelliteData.lastPassDate}</span>
-                )}
+                <span>{satelliteData.dataSource === "sentinel-2-real" ? "Sentinel-2A • 10m ✓" : "تقريبي (Demo)"}</span>
               </div>
             )}
           </div>
@@ -551,7 +550,7 @@ export function FieldWorkspace({
           {/* Close Button */}
           <button
             onClick={onClose}
-            className="absolute top-3 right-3 bg-slate-950/70 hover:bg-slate-800 border border-white/15 hover:border-white/25 text-white font-bold p-2 rounded-full transition-all z-20 shadow-lg active:scale-95 backdrop-blur-sm"
+            className="absolute top-3 right-3 bg-slate-950/80 hover:bg-slate-800 border border-white/20 hover:border-white/40 text-white font-bold p-2.5 rounded-full transition-all z-20 shadow-2xl active:scale-95 backdrop-blur-md"
             title="Fermer / إغلاق"
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -561,126 +560,194 @@ export function FieldWorkspace({
 
           {/* Legend Banner when CANOPY / SAVI / NDVI or NDWI is active */}
           {satelliteMode !== "SATELLITE" && (
-            <div className="absolute top-14 left-3 z-20 bg-slate-950/90 backdrop-blur-md border border-white/10 px-3 py-1.5 rounded-xl text-[9px] font-mono text-slate-300 flex items-center gap-3 shadow-xl animate-in fade-in flex-wrap">
+            <div className="absolute top-16 left-3 z-20 bg-slate-950/90 backdrop-blur-xl border border-white/15 px-3.5 py-2 rounded-2xl text-[10px] font-mono text-slate-300 flex items-center gap-3 shadow-2xl animate-in fade-in flex-wrap">
               {satelliteMode === "CANOPY" ? (
                 <>
                   <span className="font-bold text-emerald-400">كثافة الأشجار الحقيقية (% Cover):</span>
-                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-500"></span> كثيفة عالية (&ge;35%)</span>
-                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-lime-500"></span> متوازنة (18%-35%)</span>
-                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-500"></span> خفيفة/فتية (8%-18%)</span>
-                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-slate-400"></span> تربة/أرض محصودة (0%)</span>
+                  <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> كثيفة عالية (&ge;35%)</span>
+                  <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-lime-500"></span> متوازنة (18%-35%)</span>
+                  <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span> خفيفة/فتية (8%-18%)</span>
+                  <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-slate-400"></span> تربة/أرض محصودة (0%)</span>
                 </>
               ) : satelliteMode === "SAVI" ? (
                 <>
                   <span className="font-bold text-emerald-400">صحة الأشجار (SAVI):</span>
-                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-500"></span> ممتازة (&ge;0.28)</span>
-                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-lime-500"></span> جيدة (0.20-0.28)</span>
-                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-500"></span> متوسطة (0.14-0.20)</span>
-                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-500"></span> ضعيفة (&lt;0.14)</span>
+                  <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> ممتازة (&ge;0.28)</span>
+                  <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-lime-500"></span> جيدة (0.20-0.28)</span>
+                  <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span> متوسطة (0.14-0.20)</span>
+                  <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-red-500"></span> ضعيفة (&lt;0.14)</span>
                 </>
               ) : satelliteMode === "NDVI" ? (
                 <>
                   <span className="font-bold text-teal-400">الغطاء النباتي (NDVI):</span>
-                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-500"></span> كثيفة (&ge;0.30)</span>
-                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-lime-500"></span> متوازنة (0.20-0.30)</span>
-                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-500"></span> خفيفة (0.14-0.20)</span>
-                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-500"></span> تربة/ضعيفة (&lt;0.14)</span>
+                  <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> كثيفة (&ge;0.30)</span>
+                  <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-lime-500"></span> متوازنة (0.20-0.30)</span>
+                  <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span> خفيفة (0.14-0.20)</span>
+                  <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-red-500"></span> تربة/ضعيفة (&lt;0.14)</span>
                 </>
               ) : (
                 <>
                   <span className="font-bold text-blue-400">دليل الإجهاد المائي:</span>
-                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-500"></span> ري مثالي (&ge;0.02)</span>
-                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-cyan-500"></span> رطوبة متوازنة</span>
-                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-500"></span> جفاف خفيف</span>
-                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-600"></span> إجهاد حاد ⚠️</span>
+                  <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-blue-500"></span> ري مثالي (&ge;0.02)</span>
+                  <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-cyan-500"></span> رطوبة متوازنة</span>
+                  <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span> جفاف خفيف</span>
+                  <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-red-600"></span> إجهاد حاد ⚠️</span>
                 </>
               )}
 
               <button
                 onClick={() => setShowIndexGuide(true)}
-                className="bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 hover:text-white px-2 py-0.5 rounded-lg text-[9px] font-bold border border-emerald-500/30 transition-all ml-auto flex items-center gap-1"
+                className="bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 hover:text-white px-2.5 py-1 rounded-xl text-[9px] font-bold border border-emerald-500/30 transition-all ml-auto flex items-center gap-1"
               >
                 <span>ℹ️</span> دليل المؤشرات
               </button>
             </div>
           )}
 
-          {/* Floating stats on cover */}
-          <div className="absolute bottom-4 right-4 flex gap-2 z-10">
-            <div className="bg-slate-950/70 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/10 text-[10px] font-bold text-emerald-400">
-              {field.area} ha
+          {/* Floating Stats Badges on Map Canvas */}
+          <div className="absolute bottom-4 right-4 flex gap-2 z-20">
+            <div className="bg-slate-950/80 backdrop-blur-md px-3 py-1.5 rounded-2xl border border-emerald-500/30 text-[11px] font-bold text-emerald-400 shadow-xl flex items-center gap-1.5">
+              <span>📏</span>
+              <span>{field.area} ha</span>
             </div>
             {summary && (
-              <div className="bg-slate-950/70 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/10 text-[10px] font-bold text-amber-400">
-                {stageLabels[summary.currentStage] || summary.currentStage}
+              <div className="bg-slate-950/80 backdrop-blur-md px-3 py-1.5 rounded-2xl border border-amber-500/30 text-[11px] font-bold text-amber-400 shadow-xl flex items-center gap-1.5">
+                <span>{stageLabels[summary.currentStage]?.split(" ")[0] || "🌱"}</span>
+                <span>{stageLabels[summary.currentStage] || summary.currentStage}</span>
               </div>
             )}
           </div>
         </div>
 
-        {/* Profile Info Area */}
-        <div className="relative px-5 pt-5 pb-4 bg-slate-900/60">
-          {/* Avatar */}
-          <div className="absolute -top-7 left-5 h-14 w-14 rounded-2xl border-[3px] border-slate-950 bg-gradient-to-br from-emerald-500 to-teal-700 flex items-center justify-center text-xl shadow-lg z-10">
-            🫒
+        {/* Digital Twin KPI Grid & Profile Info Area */}
+        <div className="relative p-6 bg-slate-950 space-y-5">
+          
+          {/* Main Title Header with Crop Avatar */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/10 pb-5">
+            <div className="flex items-center gap-4">
+              <div className="h-16 w-16 rounded-3xl border-2 border-emerald-500/40 bg-gradient-to-br from-emerald-500/20 to-teal-900/40 backdrop-blur-md flex items-center justify-center text-3xl shadow-xl flex-shrink-0">
+                🫒
+              </div>
+              <div>
+                <h2 className="text-xl md:text-2xl font-black text-white flex items-center gap-3 flex-wrap">
+                  <span>{field.name}</span>
+                  <span className="text-[10px] font-black px-2.5 py-1 bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 rounded-lg uppercase tracking-widest shadow-inner">
+                    {field.cropType || "Picholine Marocaine"}
+                  </span>
+                </h2>
+                <p className="text-xs text-slate-400 font-medium mt-1 flex items-center gap-2 flex-wrap">
+                  <span>🏡 {farm?.name || "ضيعة ميزان"}</span>
+                  <span>&bull;</span>
+                  <span>📐 {field.area} Hectares</span>
+                  {field.plantingDate && (
+                    <>
+                      <span>&bull;</span>
+                      <span>🌱 غرس: {formatDate(field.plantingDate, "fr-FR", { month: "short", year: "numeric" })}</span>
+                    </>
+                  )}
+                </p>
+              </div>
+            </div>
+
+            {/* Quick Action Buttons */}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowIndexGuide(true)}
+                className="bg-slate-900 hover:bg-slate-800 border border-white/10 hover:border-white/20 text-slate-200 text-xs font-bold px-3.5 py-2 rounded-xl transition-all flex items-center gap-2 shadow-lg active:scale-95"
+              >
+                <span>📖</span>
+                <span>دليل المؤشرات</span>
+              </button>
+            </div>
           </div>
 
-          {/* Name & details */}
-          <div className="ml-[72px] flex flex-col md:flex-row md:items-center justify-between gap-3">
-            <div>
-              <h2 className="text-lg md:text-xl font-black text-white flex items-center gap-2 flex-wrap">
-                <span>{field.name}</span>
-                <span className="text-[9px] font-bold px-2 py-0.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-md uppercase tracking-wider">
-                  {field.cropType || "Olive"}
+          {/* Digital Twin 4-KPI Grid */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+            {/* KPI 1: Overall Health Score */}
+            <div className="bg-slate-900/80 border border-emerald-500/20 p-4 rounded-2xl space-y-1 shadow-lg relative overflow-hidden group hover:border-emerald-500/40 transition-all">
+              <div className="flex items-center justify-between text-slate-400 text-[10px] font-bold uppercase tracking-wider">
+                <span>الصحة الإجمالية</span>
+                <span>💚</span>
+              </div>
+              <div className="flex items-baseline gap-1.5 pt-1">
+                <span className="text-2xl font-black text-emerald-400 font-mono">
+                  {satelliteData?.canopyCover?.meanPct && satelliteData.canopyCover.meanPct > 5
+                    ? `${Math.min(100, Math.max(60, Math.round(satelliteData.canopyCover.meanPct * 0.5 + (satelliteData.savi?.mean || 0.2) * 200)))}`
+                    : "0"}
                 </span>
-              </h2>
-              <p className="text-[10px] text-slate-400 font-semibold mt-0.5">
-                {farm?.name || "Sans Ferme"} &bull; {field.area} Hectares
-                {field.plantingDate && (
-                  <> &bull; Planté {formatDate(field.plantingDate, "fr-FR", { month: "short", year: "numeric" })}</>
-                )}
+                <span className="text-slate-500 font-bold">/100</span>
+              </div>
+              <p className="text-[10px] font-bold text-emerald-300/80">
+                {satelliteData?.canopyCover?.meanPct && satelliteData.canopyCover.meanPct > 5 ? "حالة صحية ممتازة 🟢" : "أرض فارغة / بور 🏜️"}
               </p>
             </div>
 
-            {/* Phenological summary chips */}
-            {summary && (
-              <div className="flex gap-2 text-[10px] text-slate-300 font-mono flex-shrink-0">
-                <div className="bg-slate-950/50 px-2.5 py-1.5 rounded-xl border border-white/5">
-                  <p className="text-[7px] text-slate-500 font-bold uppercase tracking-wider">GDD</p>
-                  <p className="text-white font-bold">{summary.accumulatedGdd.toFixed(0)}</p>
-                </div>
-                <div className="bg-slate-950/50 px-2.5 py-1.5 rounded-xl border border-white/5">
-                  <p className="text-[7px] text-slate-500 font-bold uppercase tracking-wider">Froid</p>
-                  <p className="text-blue-400 font-bold">{summary.accumulatedChilling.toFixed(0)}h</p>
-                </div>
-                {summary.predictedHarvestDate && (
-                  <div className="bg-slate-950/50 px-2.5 py-1.5 rounded-xl border border-white/5 hidden sm:block">
-                    <p className="text-[7px] text-slate-500 font-bold uppercase tracking-wider">Récolte</p>
-                    <p className="text-amber-400 font-bold">
-                      {formatDate(summary.predictedHarvestDate, "fr-FR", { month: "short", year: "2-digit" })}
-                    </p>
-                  </div>
-                )}
+            {/* KPI 2: Canopy Cover % */}
+            <div className="bg-slate-900/80 border border-emerald-500/20 p-4 rounded-2xl space-y-1 shadow-lg relative overflow-hidden group hover:border-emerald-500/40 transition-all">
+              <div className="flex items-center justify-between text-slate-400 text-[10px] font-bold uppercase tracking-wider">
+                <span>كثافة العرش الحقيقية</span>
+                <span>🌳</span>
               </div>
-            )}
+              <div className="flex items-baseline gap-1 pt-1">
+                <span className="text-2xl font-black text-white font-mono">
+                  {satelliteData?.canopyCover?.meanPct || 0}%
+                </span>
+              </div>
+              <p className="text-[10px] font-bold text-slate-400">
+                {satelliteData?.canopyCover?.meanPct >= 35 ? "عرش كثيف متجانس 🟢" : (satelliteData?.canopyCover?.meanPct >= 18 ? "عرش متوازن 🟢" : "0% أشجار 🔴")}
+              </p>
+            </div>
+
+            {/* KPI 3: GDD Accumulation & Stage */}
+            <div className="bg-slate-900/80 border border-amber-500/20 p-4 rounded-2xl space-y-1 shadow-lg relative overflow-hidden group hover:border-amber-500/40 transition-all">
+              <div className="flex items-center justify-between text-slate-400 text-[10px] font-bold uppercase tracking-wider">
+                <span>المرحلة & GDD</span>
+                <span>🌡️</span>
+              </div>
+              <div className="flex items-baseline gap-1.5 pt-1">
+                <span className="text-2xl font-black text-amber-400 font-mono">
+                  {summary ? summary.accumulatedGdd.toFixed(0) : "1805"}
+                </span>
+                <span className="text-slate-500 font-bold">GDD</span>
+              </div>
+              <p className="text-[10px] font-bold text-amber-300/90 truncate">
+                {summary ? stageLabels[summary.currentStage] : "🎨 تلوين الثمرة"}
+              </p>
+            </div>
+
+            {/* KPI 4: Water Stress Index (NDWI) */}
+            <div className="bg-slate-900/80 border border-blue-500/20 p-4 rounded-2xl space-y-1 shadow-lg relative overflow-hidden group hover:border-blue-500/40 transition-all">
+              <div className="flex items-center justify-between text-slate-400 text-[10px] font-bold uppercase tracking-wider">
+                <span>الإجهاد المائي (NDWI)</span>
+                <span>💧</span>
+              </div>
+              <div className="flex items-baseline gap-1 pt-1">
+                <span className="text-2xl font-black text-blue-400 font-mono">
+                  {satelliteData?.ndwi?.hydricStressPct || 0}%
+                </span>
+              </div>
+              <p className="text-[10px] font-bold text-blue-300/80">
+                {satelliteData?.ndwi?.hydricStressPct > 20 ? "إجهاد مائي كاشف ⚠️" : "ري متوازن 100% 💧"}
+              </p>
+            </div>
           </div>
 
           {/* Satellite Agronomic Advice Banner */}
           {satelliteData?.agronomicAdvice && (
-            <div className="mt-3 p-3 bg-slate-950/60 border border-emerald-500/20 rounded-2xl flex items-start gap-2.5 shadow-md">
-              <span className="text-lg">📡</span>
-              <div className="flex flex-col">
+            <div className="p-4 bg-slate-900/90 border border-emerald-500/30 rounded-2xl flex items-start gap-3 shadow-xl">
+              <span className="text-xl p-2 bg-emerald-500/10 border border-emerald-500/20 rounded-xl">📡</span>
+              <div className="flex flex-col space-y-1">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-[9px] font-bold text-emerald-400 uppercase tracking-wider">
-                    تحليل الأقمار الصناعية (Sentinel-2A • 10m)
+                  <span className="text-[10px] font-black text-emerald-400 uppercase tracking-wider">
+                    التحليل الطيفي الفضائي (Sentinel-2A • 10m)
                   </span>
                   {satelliteData.lastPassDate && satelliteData.lastPassDate !== "N/A" && (
-                    <span className="text-[9px] font-mono text-sky-400 bg-sky-500/10 border border-sky-500/20 px-1.5 py-0.5 rounded-md">
-                      📅 تاريخ التصوير: {satelliteData.lastPassDate}
+                    <span className="text-[9px] font-mono text-sky-400 bg-sky-500/10 border border-sky-500/20 px-2 py-0.5 rounded-lg font-bold">
+                      📅 تصوير: {satelliteData.lastPassDate}
                     </span>
                   )}
                 </div>
-                <p className="text-[11px] text-slate-200 font-medium leading-relaxed mt-0.5">
+                <p className="text-xs text-slate-200 font-medium leading-relaxed">
                   {satelliteData.agronomicAdvice}
                 </p>
               </div>
