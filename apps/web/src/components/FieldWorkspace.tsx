@@ -580,10 +580,10 @@ export function FieldWorkspace({
               ) : satelliteMode === "NDVI" ? (
                 <>
                   <span className="font-bold text-teal-400">الغطاء النباتي (NDVI):</span>
-                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-500"></span> كثيفة (&gt;0.45)</span>
-                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-lime-500"></span> متوسطة (0.32-0.45)</span>
-                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-500"></span> خفيفة (0.22-0.32)</span>
-                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-500"></span> ضعيفة (&lt;0.22)</span>
+                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-500"></span> كثيفة (&ge;0.30)</span>
+                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-lime-500"></span> متوازنة (0.20-0.30)</span>
+                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-500"></span> خفيفة (0.14-0.20)</span>
+                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-500"></span> تربة/ضعيفة (&lt;0.14)</span>
                 </>
               ) : (
                 <>

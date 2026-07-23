@@ -261,7 +261,7 @@ def create_savi_heatmap(grid_savi: np.ndarray, poly_mask: np.ndarray, cloud_shad
 
 
 def create_ndvi_heatmap(grid_ndvi: np.ndarray, poly_mask: np.ndarray, cloud_shadow_mask: np.ndarray = None) -> str:
-    """Generate RGBA heatmap PNG base64 URL for NDVI."""
+    """Generate RGBA heatmap PNG base64 URL for NDVI calibrated for agricultural orchards."""
     h, w = grid_ndvi.shape
     rgba = np.zeros((h, w, 4), dtype=np.uint8)
 
@@ -271,14 +271,14 @@ def create_ndvi_heatmap(grid_ndvi: np.ndarray, poly_mask: np.ndarray, cloud_shad
                 rgba[i, j] = [0, 0, 0, 0]
                 continue
             val = grid_ndvi[i, j]
-            if val >= 0.45:
-                rgba[i, j] = [16, 185, 129, 220]
-            elif val >= 0.32:
-                rgba[i, j] = [132, 204, 22, 210]
-            elif val >= 0.22:
-                rgba[i, j] = [234, 179, 8, 210]
+            if val >= 0.30:
+                rgba[i, j] = [16, 185, 129, 220]   # Emerald Green (Dense Vegetation)
+            elif val >= 0.20:
+                rgba[i, j] = [132, 204, 22, 210]   # Lime Green (Normal Orchard Canopy)
+            elif val >= 0.14:
+                rgba[i, j] = [234, 179, 8, 210]    # Yellow (Light Canopy)
             else:
-                rgba[i, j] = [239, 68, 68, 225]
+                rgba[i, j] = [239, 68, 68, 225]    # Red (Bare Soil / Unvegetated)
 
     img = Image.fromarray(rgba, mode="RGBA")
     buf = io.BytesIO()
@@ -603,8 +603,8 @@ async def analyze_satellite(req: SatelliteAnalysisRequest):
     min_ndwi_val = float(np.min(valid_ndwi))
     max_ndwi_val = float(np.max(valid_ndwi))
 
-    # Calibrated Hydric Stress calculation on Tree Canopy pixels only (NDWI < -0.16)
-    stress_pixels = np.sum(valid_mask & (grid_ndwi < -0.16))
+    # Calibrated Hydric Stress calculation on Tree Canopy pixels only (Olive leaves NDWI < -0.22)
+    stress_pixels = np.sum(valid_mask & (grid_ndwi < -0.22))
     total_tree_pixels = max(1, len(valid_savi))
     hydric_stress_pct = round((stress_pixels / total_tree_pixels) * 100, 1)
 
