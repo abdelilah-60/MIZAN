@@ -193,13 +193,14 @@ def erode_mask(mask: np.ndarray, iterations: int = 2) -> np.ndarray:
     return eroded if np.any(eroded) else mask
 
 
-def apply_spectral_decision_tree(grid_savi: np.ndarray, grid_ndti: np.ndarray, grid_ndre: np.ndarray, poly_mask: np.ndarray):
+def apply_spectral_decision_tree(grid_savi: np.ndarray, grid_ndti: np.ndarray, grid_ndre: np.ndarray, poly_mask: np.ndarray, crop_type: str = "Olive"):
     """
-    Spectral Decision Tree Architecture:
-    1. NDTI Masking for Dry Straw/Crop Residue: (NDTI > 0.08 & NDRE < 0.10) or (SAVI < 0.15 & NDRE < 0.08)
+    Crop-Calibrated Spectral Decision Tree Architecture:
+    1. Crop Residue / Harvested Wheat Straw: (NDTI > 0.08 & NDRE < 0.04) or (SAVI < 0.11 & NDRE < 0.03)
        -> Classified as Crop Residue / Bare Soil (f_Tree = 0.0%)
-    2. Living Tree Canopy: SAVI >= 0.15 AND NDRE >= 0.08 (Active Chlorophyll Red Edge)
-       -> Unmixed & scaled to f_Tree >= 0.35 (35% - 100%)
+    2. Living Tree Canopy (Olive / Orchards):
+       - For Olive / Picholine / Arbequina: SAVI >= 0.11 AND NDRE >= 0.035 (Calibrated for olive leaf optics)
+       -> Unmixed & scaled to f_Tree >= 0.35 (35% - 100% Emerald Green)
     """
     h, w = grid_savi.shape
     f_tree_grid = np.zeros((h, w), dtype=np.float32)
@@ -209,8 +210,10 @@ def apply_spectral_decision_tree(grid_savi: np.ndarray, grid_ndti: np.ndarray, g
         return f_tree_grid
 
     valid_savi = grid_savi[valid_mask]
-    savi_max = float(np.percentile(valid_savi, 95)) if len(valid_savi) > 0 else 0.40
-    savi_floor = 0.15
+    savi_max = float(np.percentile(valid_savi, 95)) if len(valid_savi) > 0 else 0.35
+    savi_floor = 0.11
+
+    is_bare_or_fallow = any(w in crop_type.lower() for w in ["bare", "fallow", "بور", "فارغ", "فارغة"])
 
     for i in range(h):
         for j in range(w):
@@ -221,11 +224,13 @@ def apply_spectral_decision_tree(grid_savi: np.ndarray, grid_ndti: np.ndarray, g
             ndti_val = grid_ndti[i, j]
             ndre_val = grid_ndre[i, j]
 
-            # Rule 1: Crop Residue / Harvested Wheat Straw (High NDTI, Low NDRE)
-            if (ndti_val > 0.08 and ndre_val < 0.10) or (savi_val < 0.15 and ndre_val < 0.08):
+            if is_bare_or_fallow:
                 f_tree_grid[i, j] = 0.0
-            # Rule 2: Living Tree Canopy (Active Chlorophyll Red Edge: NDRE >= 0.08 and SAVI >= 0.15)
-            elif savi_val >= 0.15 and ndre_val >= 0.08:
+            # Rule 1: Crop Residue / Harvested Wheat Straw (High NDTI, Low NDRE)
+            elif (ndti_val > 0.08 and ndre_val < 0.04) or (savi_val < 0.11 and ndre_val < 0.03):
+                f_tree_grid[i, j] = 0.0
+            # Rule 2: Living Tree Canopy (Olive Leaf Optics: SAVI >= 0.11 and NDRE >= 0.035)
+            elif savi_val >= 0.11 and ndre_val >= 0.035:
                 ratio = np.clip((savi_val - savi_floor) / (savi_max - savi_floor + 1e-9), 0.0, 1.0)
                 f_tree_grid[i, j] = float(np.clip(0.35 + 0.65 * ratio, 0.35, 1.0))
             else:
@@ -666,7 +671,7 @@ async def analyze_satellite(req: SatelliteAnalysisRequest):
         poly_mask[:, :] = True
 
     # 4. Apply Spectral Decision Tree Architecture (NDTI Straw Masking + NDRE Living Chlorophyll)
-    f_tree_grid = apply_spectral_decision_tree(grid_savi, grid_ndti, grid_ndre, poly_mask & (~cloud_shadow_mask))
+    f_tree_grid = apply_spectral_decision_tree(grid_savi, grid_ndti, grid_ndre, poly_mask & (~cloud_shadow_mask), crop_type)
 
     # Calculate statistics on inner eroded field mask (stripping outside border overlaps)
     raw_poly_pixels = poly_mask & (~cloud_shadow_mask)
