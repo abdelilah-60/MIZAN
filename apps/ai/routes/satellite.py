@@ -183,6 +183,7 @@ def compute_otsu_threshold(savi_vals: np.ndarray) -> float:
 def compute_fractional_canopy_cover(savi_grid: np.ndarray, otsu_threshold: float, poly_mask: np.ndarray):
     """
     Calculates Fractional Tree Canopy Coverage (f_Tree) per 10m pixel [0.0 to 1.0].
+    Aligns canopy cover scaling so tree canopy pixels scale to >= 35% (Emerald Green).
     """
     valid_savi = savi_grid[poly_mask]
     if len(valid_savi) == 0:
@@ -197,7 +198,11 @@ def compute_fractional_canopy_cover(savi_grid: np.ndarray, otsu_threshold: float
     if savi_tree_max <= savi_soil:
         savi_tree_max = savi_soil + 0.15
 
-    f_tree = np.clip((savi_grid - savi_soil) / (savi_tree_max - savi_soil + 1e-9), 0.0, 1.0)
+    raw_ratio = np.clip((savi_grid - savi_soil) / (savi_tree_max - savi_soil + 1e-9), 0.0, 1.0)
+    
+    # Scale verified tree canopy pixels (SAVI >= otsu_threshold) to >= 0.35 (35% Emerald Green)
+    f_tree = np.where(savi_grid >= otsu_threshold, 0.35 + 0.65 * raw_ratio, raw_ratio * 0.35)
+    f_tree = np.clip(f_tree, 0.0, 1.0)
     f_tree[~poly_mask] = 0.0
     return f_tree, savi_soil, savi_tree_max
 
@@ -205,7 +210,11 @@ def compute_fractional_canopy_cover(savi_grid: np.ndarray, otsu_threshold: float
 def create_canopy_cover_heatmap(f_tree_grid: np.ndarray, poly_mask: np.ndarray, cloud_shadow_mask: np.ndarray = None) -> str:
     """
     Generate RGBA heatmap PNG base64 URL for Fractional Tree Canopy Cover (f_Tree %).
-    Renders orchard canopy in rich emerald green tones matching high-res aerial imagery.
+    Thresholds align 100% with Frontend Legend:
+    - >= 0.35 (35%): Dense Canopy (Emerald Green)
+    - 0.18 - 0.35: Balanced Canopy (Lime Green)
+    - 0.08 - 0.18: Light Canopy (Yellow)
+    - < 0.08: Bare Soil / Unvegetated (Red)
     """
     h, w = f_tree_grid.shape
     rgba = np.zeros((h, w, 4), dtype=np.uint8)
@@ -216,14 +225,14 @@ def create_canopy_cover_heatmap(f_tree_grid: np.ndarray, poly_mask: np.ndarray, 
                 rgba[i, j] = [0, 0, 0, 0]
                 continue
             val = f_tree_grid[i, j]
-            if val >= 0.25:
-                rgba[i, j] = [16, 185, 129, 225]   # Emerald Green (Dense Orchard Foliage)
-            elif val >= 0.12:
-                rgba[i, j] = [132, 204, 22, 215]   # Lime Green (Normal Canopy)
-            elif val >= 0.05:
-                rgba[i, j] = [234, 179, 8, 210]    # Yellow (Light Canopy)
+            if val >= 0.35:
+                rgba[i, j] = [16, 185, 129, 225]   # Emerald Green (Dense Canopy >= 35%)
+            elif val >= 0.18:
+                rgba[i, j] = [132, 204, 22, 215]   # Lime Green (Balanced Canopy 18%-35%)
+            elif val >= 0.08:
+                rgba[i, j] = [234, 179, 8, 210]    # Yellow (Light Canopy 8%-18%)
             else:
-                rgba[i, j] = [239, 68, 68, 220]    # Red (Unvegetated / Boundary)
+                rgba[i, j] = [239, 68, 68, 220]    # Red (Bare Soil / Unvegetated < 8%)
 
     img = Image.fromarray(rgba, mode="RGBA")
     buf = io.BytesIO()
