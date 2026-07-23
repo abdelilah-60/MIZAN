@@ -213,17 +213,71 @@ async def query_sentinel2_stac(min_lng, min_lat, max_lng, max_lat):
     return None
 
 
+def wgs84_to_utm(lon: float, lat: float):
+    """
+    Mathematical transformation from WGS84 (lon, lat) to UTM Easting & Northing in meters.
+    Calculates exact spatial position for Sentinel-2 COG images (EPSG:32629 / 32630).
+    """
+    zone = int((lon + 180) / 6) + 1
+    lon0 = (zone - 1) * 6 - 180 + 3
+
+    a = 6378137.0
+    f = 1 / 298.257223563
+    k0 = 0.9996
+
+    phi = math.radians(lat)
+    lambda_val = math.radians(lon)
+    lambda0 = math.radians(lon0)
+
+    e2 = f * (2 - f)
+    e_prime2 = e2 / (1 - e2)
+
+    N = a / math.sqrt(1 - e2 * math.sin(phi)**2)
+    T = math.tan(phi)**2
+    C = e_prime2 * math.cos(phi)**2
+    A = (lambda_val - lambda0) * math.cos(phi)
+
+    M = a * ((1 - e2/4 - 3*e2**2/64 - 5*e2**3/256) * phi
+             - (3*e2/8 + 3*e2**2/32 + 45*e2**3/1024) * math.sin(2*phi)
+             + (15*e2**2/256 + 45*e2**3/1024) * math.sin(4*phi)
+             - (35*e2**3/3072) * math.sin(6*phi))
+
+    easting = 500000 + k0 * N * (A + (1 - T + C) * A**3 / 6 + (5 - 18*T + T**2 + 72*C - 58*e_prime2) * A**5 / 120)
+    northing = k0 * (M + N * math.tan(phi) * (A**2 / 2 + (5 - T + 9*C + 4*C**2) * A**4 / 24 + (61 - 58*T + T**2 + 600*C - 330*e_prime2) * A**6 / 720))
+    return easting, northing, zone
+
+
 def decode_band_crop(url: str, min_lng: float, min_lat: float, max_lng: float, max_lat: float, scene_bbox: list, client: httpx.Client):
     f = HttpSeekableFile(url, client)
     with tifffile.TiffFile(f) as tif:
         p0 = tif.pages[0]
         full_w, full_h = p0.shape[1], p0.shape[0]
-        s_min_lng, s_min_lat, s_max_lng, s_max_lat = scene_bbox
 
-        px_min_x = int((min_lng - s_min_lng) / (s_max_lng - s_min_lng + 1e-9) * full_w)
-        px_max_x = int((max_lng - s_min_lng) / (s_max_lng - s_min_lng + 1e-9) * full_w)
-        px_min_y = int((s_max_lat - max_lat) / (s_max_lat - s_min_lat + 1e-9) * full_h)
-        px_max_y = int((s_max_lat - min_lat) / (s_max_lat - s_min_lat + 1e-9) * full_h)
+        # Extract GeoTIFF UTM tiepoints and pixel scale
+        tie_x, tie_y = 0.0, 0.0
+        scale_x, scale_y = 10.0, 10.0
+        for tag in p0.tags.values():
+            if tag.name == 'ModelTiepointTag':
+                tie_x, tie_y = tag.value[3], tag.value[4]
+            elif tag.name == 'ModelPixelScaleTag':
+                scale_x, scale_y = tag.value[0], tag.value[1]
+
+        # Calculate exact 10m image pixel indices via UTM projection (Zero-Shift)
+        if tie_x > 0 and tie_y > 0:
+            utm_min_x, utm_max_y, _ = wgs84_to_utm(min_lng, max_lat)
+            utm_max_x, utm_min_y, _ = wgs84_to_utm(max_lng, min_lat)
+
+            px_min_x = int((utm_min_x - tie_x) / scale_x)
+            px_max_x = int((utm_max_x - tie_x) / scale_x)
+            px_min_y = int((tie_y - utm_max_y) / scale_y)
+            px_max_y = int((tie_y - utm_min_y) / scale_y)
+        else:
+            # Fallback linear mapping
+            s_min_lng, s_min_lat, s_max_lng, s_max_lat = scene_bbox
+            px_min_x = int((min_lng - s_min_lng) / (s_max_lng - s_min_lng + 1e-9) * full_w)
+            px_max_x = int((max_lng - s_min_lng) / (s_max_lng - s_min_lng + 1e-9) * full_w)
+            px_min_y = int((s_max_lat - max_lat) / (s_max_lat - s_min_lat + 1e-9) * full_h)
+            px_max_y = int((s_max_lat - min_lat) / (s_max_lat - s_min_lat + 1e-9) * full_h)
 
         tile_w = p0.tilewidth if p0.is_tiled else full_w
         tile_h = p0.tilelength if p0.is_tiled else full_h
