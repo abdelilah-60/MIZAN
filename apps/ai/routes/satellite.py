@@ -1,7 +1,7 @@
 """
-Sentinel-2 Satellite Spectral Analysis Engine (Real Data Pipeline)
-Reads actual GeoTIFF bands (B04, B08, B11) from Sentinel-2 COGs via STAC,
-calculates real NDVI & NDWI per pixel, and generates transparent heatmap overlays.
+Sentinel-2 Satellite Spectral Analysis Engine (Pure-Python Vercel-Compatible Pipeline)
+Reads actual GeoTIFF bands (B04, B08, B11) from Sentinel-2 COGs via HTTP Range requests using `tifffile` + `httpx`,
+without requiring GDAL or rasterio C dependencies. Fully compatible with Vercel Serverless!
 """
 import os
 import base64
@@ -15,24 +15,12 @@ import httpx
 import numpy as np
 from PIL import Image
 
-# Try to import rasterio for real satellite data reading
 try:
-    import rasterio
-    from rasterio.windows import from_bounds
-    from rasterio.warp import transform_bounds
-    from rasterio.enums import Resampling
-    HAS_RASTERIO = True
-
-    # Configure GDAL for efficient Cloud Optimized GeoTIFF (COG) access
-    os.environ['GDAL_HTTP_MULTIPLEX'] = 'YES'
-    os.environ['GDAL_HTTP_MERGE_CONSECUTIVE_RANGES'] = 'YES'
-    os.environ['GDAL_DISABLE_READDIR_ON_OPEN'] = 'EMPTY_DIR'
-    os.environ['AWS_NO_SIGN_REQUEST'] = 'YES'
-    os.environ['GDAL_HTTP_MAX_RETRY'] = '3'
-    os.environ['GDAL_HTTP_RETRY_DELAY'] = '1'
+    import tifffile
+    HAS_TIFFFILE = True
 except ImportError:
-    HAS_RASTERIO = False
-    print("WARNING: rasterio not available. Using coordinate-based approximation model.")
+    HAS_TIFFFILE = False
+    print("WARNING: tifffile not available.")
 
 router = APIRouter(prefix="/api/satellite", tags=["satellite"])
 
@@ -43,6 +31,52 @@ class SatelliteAnalysisRequest(BaseModel):
     geoPolygon: Dict[str, Any]
     cropType: Optional[str] = "Olive"
     areaHa: Optional[float] = 1.0
+
+
+class HttpSeekableFile:
+    """
+    Lightweight seekable HTTP file wrapper for tifffile over HTTP Range requests.
+    Enables reading Cloud-Optimized GeoTIFF (COG) IFD headers and overview pages
+    directly over HTTP without downloading full multi-megabyte files.
+    """
+    def __init__(self, url: str, client: httpx.Client):
+        self.url = url
+        self.client = client
+        self._pos = 0
+        try:
+            res = self.client.head(self.url)
+            self._length = int(res.headers.get("content-length", 0))
+        except Exception:
+            self._length = 0
+
+    def seek(self, offset: int, whence: int = io.SEEK_SET) -> int:
+        if whence == io.SEEK_SET:
+            self._pos = offset
+        elif whence == io.SEEK_CUR:
+            self._pos += offset
+        elif whence == io.SEEK_END:
+            self._pos = self._length + offset
+        return self._pos
+
+    def tell(self) -> int:
+        return self._pos
+
+    def read(self, size: int = -1) -> bytes:
+        if size == -1 or size is None:
+            end = self._length - 1
+        else:
+            end = min(self._pos + size - 1, self._length - 1)
+        if self._pos > end:
+            return b""
+        headers = {"Range": f"bytes={self._pos}-{end}"}
+        try:
+            res = self.client.get(self.url, headers=headers)
+            data = res.content
+            self._pos += len(data)
+            return data
+        except Exception as e:
+            print(f"HTTP Range read error ({headers}): {e}")
+            return b""
 
 
 def calculate_polygon_bounds(coords: List[List[float]]):
@@ -69,7 +103,7 @@ def point_in_polygon(x: float, y: float, poly_coords: List[List[float]]) -> bool
 
 
 def create_ndvi_heatmap(grid_ndvi: np.ndarray, mask: np.ndarray) -> str:
-    """Generate RGBA heatmap for NDVI. Non-vegetation pixels are transparent."""
+    """Generate RGBA heatmap PNG base64 URL for NDVI. Non-vegetation pixels are transparent."""
     h, w = grid_ndvi.shape
     rgba = np.zeros((h, w, 4), dtype=np.uint8)
 
@@ -79,8 +113,7 @@ def create_ndvi_heatmap(grid_ndvi: np.ndarray, mask: np.ndarray) -> str:
                 continue
             val = grid_ndvi[i, j]
             if val < 0.20:
-                # Non-vegetation (buildings, bare soil, concrete) -> Transparent
-                rgba[i, j] = [0, 0, 0, 0]
+                rgba[i, j] = [0, 0, 0, 0]          # Non-vegetation -> Transparent
             elif val >= 0.70:
                 rgba[i, j] = [16, 185, 129, 210]   # Dense canopy - Emerald
             elif val >= 0.55:
@@ -97,7 +130,7 @@ def create_ndvi_heatmap(grid_ndvi: np.ndarray, mask: np.ndarray) -> str:
 
 
 def create_ndwi_heatmap(grid_ndwi: np.ndarray, grid_ndvi: np.ndarray, mask: np.ndarray) -> str:
-    """Generate RGBA heatmap for NDWI. Non-vegetation pixels are transparent."""
+    """Generate RGBA heatmap PNG base64 URL for NDWI. Non-vegetation pixels are transparent."""
     h, w = grid_ndwi.shape
     rgba = np.zeros((h, w, 4), dtype=np.uint8)
 
@@ -121,12 +154,8 @@ def create_ndwi_heatmap(grid_ndwi: np.ndarray, grid_ndvi: np.ndarray, mask: np.n
     return f"data:image/png;base64,{base64.b64encode(buf.getvalue()).decode()}"
 
 
-# ─────────────────────────────────────────────────────────────
-# STAC Catalog Query
-# ─────────────────────────────────────────────────────────────
-
 async def query_sentinel2_stac(min_lng, min_lat, max_lng, max_lat):
-    """Query Element84 STAC for latest cloud-free Sentinel-2 L2A scene."""
+    """Query Element84 STAC catalog for latest cloud-free Sentinel-2 L2A scene."""
     payload = {
         "collections": ["sentinel-2-l2a"],
         "bbox": [min_lng, min_lat, max_lng, max_lat],
@@ -135,7 +164,7 @@ async def query_sentinel2_stac(min_lng, min_lat, max_lng, max_lat):
         "sortby": [{"field": "properties.datetime", "direction": "desc"}]
     }
     try:
-        async with httpx.AsyncClient(timeout=8.0) as client:
+        async with httpx.AsyncClient(timeout=6.0) as client:
             res = await client.post(STAC_SEARCH_URL, json=payload)
             if res.status_code == 200:
                 data = res.json()
@@ -148,6 +177,7 @@ async def query_sentinel2_stac(min_lng, min_lat, max_lng, max_lat):
                         "id": scene.get("id", "unknown"),
                         "date": props.get("datetime", "").split("T")[0],
                         "cloudCover": f"{props.get('eo:cloud_cover', 0):.1f}%",
+                        "bbox": scene.get("bbox"),
                         "assets": assets
                     }
     except Exception as e:
@@ -155,99 +185,98 @@ async def query_sentinel2_stac(min_lng, min_lat, max_lng, max_lat):
     return None
 
 
-# ─────────────────────────────────────────────────────────────
-# Real Satellite Data Reading (rasterio + COG)
-# ─────────────────────────────────────────────────────────────
-
-def read_real_bands(assets: dict, min_lng, min_lat, max_lng, max_lat, grid_size=64):
+def read_real_bands_tifffile(assets: dict, min_lng, min_lat, max_lng, max_lat, scene_bbox=None, grid_size=64):
     """
-    Read actual Sentinel-2 spectral bands from COG files via HTTP.
-    Returns (b04_array, b08_array, b11_array) normalized to [0,1].
+    Pure-Python GeoTIFF band reader using `tifffile` and `httpx` HTTP range requests.
+    Reads real Sentinel-2 B04 (Red), B08 (NIR), and B11 (SWIR) bands without GDAL/rasterio.
     """
-    if not HAS_RASTERIO:
+    if not HAS_TIFFFILE:
         return None, None, None
 
-    # Asset keys in Element84 earth-search v1
     band_keys = {
         "red": ["red", "B04", "b04"],
         "nir": ["nir", "B08", "b08", "nir08"],
         "swir": ["swir16", "B11", "b11", "swir_1"]
     }
 
-    def find_asset_url(assets, key_list):
+    def find_url(assets, key_list):
         for k in key_list:
             if k in assets and "href" in assets[k]:
                 return assets[k]["href"]
         return None
 
-    red_url = find_asset_url(assets, band_keys["red"])
-    nir_url = find_asset_url(assets, band_keys["nir"])
-    swir_url = find_asset_url(assets, band_keys["swir"])
+    red_url = find_url(assets, band_keys["red"])
+    nir_url = find_url(assets, band_keys["nir"])
+    swir_url = find_url(assets, band_keys["swir"])
 
     if not red_url or not nir_url:
-        print(f"Missing band URLs. red={red_url}, nir={nir_url}, swir={swir_url}")
         return None, None, None
 
     try:
-        # Read B04 (Red, 10m resolution)
-        with rasterio.open(red_url) as src:
-            # Transform bounding box from WGS84 to scene CRS
-            scene_bounds = transform_bounds("EPSG:4326", src.crs, min_lng, min_lat, max_lng, max_lat)
-            window = from_bounds(*scene_bounds, src.transform)
+        with httpx.Client(timeout=8.0, follow_redirects=True) as client:
+            # 1. Read B04 (Red) band overview page
+            file_red = HttpSeekableFile(red_url, client)
+            with tifffile.TiffFile(file_red) as tif_red:
+                # Select a fast medium-overview page (index -2 or -1)
+                page_red = tif_red.pages[-2] if len(tif_red.pages) > 1 else tif_red.pages[0]
+                arr_red = page_red.asarray().astype(np.float32)
 
-            b04 = src.read(
-                1, window=window,
-                out_shape=(grid_size, grid_size),
-                resampling=Resampling.bilinear
-            ).astype(np.float32)
+            # 2. Read B08 (NIR) band overview page
+            file_nir = HttpSeekableFile(nir_url, client)
+            with tifffile.TiffFile(file_nir) as tif_nir:
+                page_nir = tif_nir.pages[-2] if len(tif_nir.pages) > 1 else tif_nir.pages[0]
+                arr_nir = page_nir.asarray().astype(np.float32)
 
-        # Read B08 (NIR, 10m resolution)
-        with rasterio.open(nir_url) as src:
-            scene_bounds = transform_bounds("EPSG:4326", src.crs, min_lng, min_lat, max_lng, max_lat)
-            window = from_bounds(*scene_bounds, src.transform)
+            # 3. Read B11 (SWIR) band overview page if available
+            arr_swir = None
+            if swir_url:
+                try:
+                    file_swir = HttpSeekableFile(swir_url, client)
+                    with tifffile.TiffFile(file_swir) as tif_swir:
+                        page_swir = tif_swir.pages[-2] if len(tif_swir.pages) > 1 else tif_swir.pages[0]
+                        arr_swir = page_swir.asarray().astype(np.float32)
+                except Exception as e_swir:
+                    print(f"SWIR read notice: {e_swir}")
 
-            b08 = src.read(
-                1, window=window,
-                out_shape=(grid_size, grid_size),
-                resampling=Resampling.bilinear
-            ).astype(np.float32)
+            # Crop/Extract bounding box if scene_bbox [min_lon, min_lat, max_lon, max_lat] is available
+            h, w = arr_red.shape
+            if scene_bbox and len(scene_bbox) == 4:
+                s_min_lng, s_min_lat, s_max_lng, s_max_lat = scene_bbox
+                # Calculate sub-window pixel indices inside overview image
+                px_min = int(max(0, min(w - 1, (min_lng - s_min_lng) / (s_max_lng - s_min_lng + 1e-9) * w)))
+                px_max = int(max(px_min + 1, min(w, (max_lng - s_min_lng) / (s_max_lng - s_min_lng + 1e-9) * w)))
+                py_min = int(max(0, min(h - 1, (s_max_lat - max_lat) / (s_max_lat - s_min_lat + 1e-9) * h)))
+                py_max = int(max(py_min + 1, min(h, (s_max_lat - min_lat) / (s_max_lat - s_min_lat + 1e-9) * h)))
 
-        # Read B11 (SWIR, 20m resolution -> resampled to grid_size)
-        b11 = None
-        if swir_url:
-            with rasterio.open(swir_url) as src:
-                scene_bounds = transform_bounds("EPSG:4326", src.crs, min_lng, min_lat, max_lng, max_lat)
-                window = from_bounds(*scene_bounds, src.transform)
+                crop_red = arr_red[py_min:py_max, px_min:px_max]
+                crop_nir = arr_nir[py_min:py_max, px_min:px_max]
+                crop_swir = arr_swir[py_min:py_max, px_min:px_max] if arr_swir is not None else None
+            else:
+                crop_red = arr_red
+                crop_nir = arr_nir
+                crop_swir = arr_swir
 
-                b11 = src.read(
-                    1, window=window,
-                    out_shape=(grid_size, grid_size),
-                    resampling=Resampling.bilinear
-                ).astype(np.float32)
+            # Resize crops to target grid_size x grid_size using PIL image resampling
+            img_red = Image.fromarray(crop_red).resize((grid_size, grid_size), Image.Resampling.BILINEAR)
+            img_nir = Image.fromarray(crop_nir).resize((grid_size, grid_size), Image.Resampling.BILINEAR)
 
-        # Normalize reflectance values (Sentinel-2 L2A is scaled by 10000)
-        b04 = b04 / 10000.0
-        b08 = b08 / 10000.0
-        if b11 is not None:
-            b11 = b11 / 10000.0
+            grid_red = np.array(img_red, dtype=np.float32) / 10000.0
+            grid_nir = np.array(img_nir, dtype=np.float32) / 10000.0
 
-        return b04, b08, b11
+            grid_swir = None
+            if crop_swir is not None:
+                img_swir = Image.fromarray(crop_swir).resize((grid_size, grid_size), Image.Resampling.BILINEAR)
+                grid_swir = np.array(img_swir, dtype=np.float32) / 10000.0
+
+            return grid_red, grid_nir, grid_swir
 
     except Exception as e:
-        print(f"rasterio band read error: {e}")
+        print(f"read_real_bands_tifffile error: {e}")
         return None, None, None
 
 
-# ─────────────────────────────────────────────────────────────
-# Clean Fallback Model (coordinate-hash based, NO hardcoded zones)
-# ─────────────────────────────────────────────────────────────
-
 def generate_clean_approximation(coords, min_lng, min_lat, max_lng, max_lat, grid_size=64):
-    """
-    Generate a clean, coordinate-unique NDVI/NDWI approximation.
-    Uses geographic coordinate hashing for unique-per-field variation.
-    NO hardcoded buildings, NO hardcoded stress patches.
-    """
+    """Clean coordinate-unique fallback approximation model if satellite STAC is offline."""
     grid_ndvi = np.zeros((grid_size, grid_size))
     grid_ndwi = np.zeros((grid_size, grid_size))
     mask = np.zeros((grid_size, grid_size), dtype=bool)
@@ -255,14 +284,11 @@ def generate_clean_approximation(coords, min_lng, min_lat, max_lng, max_lat, gri
     lons = np.linspace(min_lng, max_lng, grid_size)
     lats = np.linspace(max_lat, min_lat, grid_size)
 
-    # Create a unique seed from field coordinates for reproducible but unique results
     coord_hash = int(hashlib.md5(f"{min_lng:.6f},{min_lat:.6f},{max_lng:.6f},{max_lat:.6f}".encode()).hexdigest()[:8], 16)
     rng = np.random.RandomState(coord_hash)
 
-    # Generate smooth spatial noise unique to this field
     noise_ndvi = rng.uniform(-0.08, 0.08, (grid_size, grid_size))
     noise_ndwi = rng.uniform(-0.06, 0.06, (grid_size, grid_size))
-
     inside_count = 0
 
     for i in range(grid_size):
@@ -272,11 +298,9 @@ def generate_clean_approximation(coords, min_lng, min_lat, max_lng, max_lat, gri
                 mask[i, j] = True
                 inside_count += 1
 
-                # Base values typical for olive groves in summer (Morocco)
                 base_ndvi = 0.62 + noise_ndvi[i, j]
                 base_ndwi = 0.14 + noise_ndwi[i, j]
 
-                # Subtle spatial gradient based on real coordinates
                 rel_x = (x - min_lng) / (max_lng - min_lng + 1e-9)
                 rel_y = (y - min_lat) / (max_lat - min_lat + 1e-9)
                 base_ndvi += 0.06 * math.sin(rel_x * 3.7 + coord_hash % 7)
@@ -288,10 +312,6 @@ def generate_clean_approximation(coords, min_lng, min_lat, max_lng, max_lat, gri
     return grid_ndvi, grid_ndwi, mask, inside_count
 
 
-# ─────────────────────────────────────────────────────────────
-# Main API Endpoint
-# ─────────────────────────────────────────────────────────────
-
 @router.post("/analyze")
 async def analyze_satellite(req: SatelliteAnalysisRequest):
     coords = req.geoPolygon.get("coordinates", [[]])[0]
@@ -302,7 +322,7 @@ async def analyze_satellite(req: SatelliteAnalysisRequest):
     grid_size = 64
     data_source = "approximation"
 
-    # Step 1: Query STAC catalog for latest Sentinel-2 scene
+    # 1. Query STAC catalog for latest cloud-free Sentinel-2 scene
     stac_info = await query_sentinel2_stac(min_lng, min_lat, max_lng, max_lat)
 
     grid_ndvi = None
@@ -310,56 +330,41 @@ async def analyze_satellite(req: SatelliteAnalysisRequest):
     mask = None
     inside_count = 0
 
-    # Step 2: Try to read REAL satellite bands
-    if stac_info and stac_info.get("assets") and HAS_RASTERIO:
-        try:
-            b04, b08, b11 = read_real_bands(
-                stac_info["assets"], min_lng, min_lat, max_lng, max_lat, grid_size
-            )
+    # 2. Try pure-Python tifffile HTTP range reader on Vercel
+    if stac_info and stac_info.get("assets") and HAS_TIFFFILE:
+        grid_red, grid_nir, grid_swir = read_real_bands_tifffile(
+            stac_info["assets"], min_lng, min_lat, max_lng, max_lat,
+            scene_bbox=stac_info.get("bbox"), grid_size=grid_size
+        )
 
-            if b04 is not None and b08 is not None:
-                data_source = "sentinel-2-real"
+        if grid_red is not None and grid_nir is not None:
+            data_source = "sentinel-2-real"
 
-                # Calculate real NDVI: (NIR - Red) / (NIR + Red)
-                denominator_ndvi = b08 + b04
-                grid_ndvi = np.where(
-                    denominator_ndvi > 0,
-                    (b08 - b04) / denominator_ndvi,
-                    0.0
-                )
+            # Calculate real NDVI = (NIR - Red) / (NIR + Red)
+            denom_ndvi = grid_nir + grid_red
+            grid_ndvi = np.where(denom_ndvi > 0, (grid_nir - grid_red) / denom_ndvi, 0.0)
 
-                # Calculate real NDWI: (NIR - SWIR) / (NIR + SWIR)
-                if b11 is not None:
-                    denominator_ndwi = b08 + b11
-                    grid_ndwi = np.where(
-                        denominator_ndwi > 0,
-                        (b08 - b11) / denominator_ndwi,
-                        0.0
-                    )
-                else:
-                    # Estimate NDWI from NDVI correlation if B11 unavailable
-                    grid_ndwi = grid_ndvi * 0.45 - 0.05
+            # Calculate real NDWI = (NIR - SWIR) / (NIR + SWIR)
+            if grid_swir is not None:
+                denom_ndwi = grid_nir + grid_swir
+                grid_ndwi = np.where(denom_ndwi > 0, (grid_nir - grid_swir) / denom_ndwi, 0.0)
+            else:
+                grid_ndwi = grid_ndvi * 0.45 - 0.05
 
-                # Apply polygon mask
-                lons = np.linspace(min_lng, max_lng, grid_size)
-                lats = np.linspace(max_lat, min_lat, grid_size)
-                mask = np.zeros((grid_size, grid_size), dtype=bool)
+            lons = np.linspace(min_lng, max_lng, grid_size)
+            lats = np.linspace(max_lat, min_lat, grid_size)
+            mask = np.zeros((grid_size, grid_size), dtype=bool)
 
-                for i in range(grid_size):
-                    for j in range(grid_size):
-                        if point_in_polygon(lons[j], lats[i], coords):
-                            mask[i, j] = True
-                            inside_count += 1
+            for i in range(grid_size):
+                for j in range(grid_size):
+                    if point_in_polygon(lons[j], lats[i], coords):
+                        mask[i, j] = True
+                        inside_count += 1
 
-                # Clip values to valid ranges
-                grid_ndvi = np.clip(grid_ndvi, -1.0, 1.0)
-                grid_ndwi = np.clip(grid_ndwi, -1.0, 1.0)
+            grid_ndvi = np.clip(grid_ndvi, -1.0, 1.0)
+            grid_ndwi = np.clip(grid_ndwi, -1.0, 1.0)
 
-        except Exception as e:
-            print(f"Real satellite processing error: {e}")
-            grid_ndvi = None  # Fall back to approximation
-
-    # Step 3: Fallback to clean approximation if real data unavailable
+    # 3. Fallback to clean approximation if real data is offline
     if grid_ndvi is None:
         data_source = "approximation"
         grid_ndvi, grid_ndwi, mask, inside_count = generate_clean_approximation(
@@ -370,7 +375,7 @@ async def analyze_satellite(req: SatelliteAnalysisRequest):
         mask[:, :] = True
         inside_count = grid_size * grid_size
 
-    # Step 4: Calculate statistics (vegetation pixels only)
+    # 4. Compute statistics on field vegetation pixels
     veg_mask = mask & (grid_ndvi >= 0.20)
     valid_ndvi = grid_ndvi[veg_mask] if np.any(veg_mask) else grid_ndvi[mask]
     valid_ndwi = grid_ndwi[veg_mask] if np.any(veg_mask) else grid_ndwi[mask]
@@ -383,16 +388,13 @@ async def analyze_satellite(req: SatelliteAnalysisRequest):
     min_ndwi_val = float(np.min(valid_ndwi)) if len(valid_ndwi) > 0 else 0.0
     max_ndwi_val = float(np.max(valid_ndwi)) if len(valid_ndwi) > 0 else 0.0
 
-    # Count hydric stress pixels (NDWI < -0.02 among vegetation)
     stress_pixels = np.sum(veg_mask & (grid_ndwi < -0.02)) if np.any(veg_mask) else 0
     veg_count = np.sum(veg_mask) if np.any(veg_mask) else 1
     hydric_stress_pct = round((stress_pixels / veg_count) * 100, 1)
 
-    # Step 5: Generate heatmap overlays
     ndvi_overlay = create_ndvi_heatmap(grid_ndvi, mask)
     ndwi_overlay = create_ndwi_heatmap(grid_ndwi, grid_ndvi, mask)
 
-    # Step 6: Generate agronomic advice
     if hydric_stress_pct > 15.0:
         advice_ar = f"⚠️ تم كشف إجهاد مائي بنسبة {hydric_stress_pct}% من مساحة أشجار {req.cropType}. يُنصح بزيادة مدة الري بمقدار 20 دقيقة وتفقد خطوط التنقيط."
     elif hydric_stress_pct > 5.0:
@@ -400,7 +402,6 @@ async def analyze_satellite(req: SatelliteAnalysisRequest):
     else:
         advice_ar = f"✅ أشجار {req.cropType} في حالة صحة ورطوبة ممتازة (NDVI: {mean_ndvi:.2f}, NDWI: {mean_ndwi:.2f})."
 
-    # Scene metadata
     scene_id = stac_info.get("id", "N/A") if stac_info else "N/A"
     scene_date = stac_info.get("date", "N/A") if stac_info else "N/A"
     cloud_cover = stac_info.get("cloudCover", "N/A") if stac_info else "N/A"
