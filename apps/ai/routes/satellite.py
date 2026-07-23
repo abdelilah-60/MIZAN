@@ -101,33 +101,28 @@ def point_in_polygon(x: float, y: float, poly_coords: List[List[float]]) -> bool
     return inside
 
 
-def create_savi_heatmap(grid_savi: np.ndarray, tree_mask: np.ndarray) -> str:
+def create_savi_heatmap(grid_savi: np.ndarray, poly_mask: np.ndarray, cloud_shadow_mask: np.ndarray = None) -> str:
     """
-    Generate RGBA heatmap PNG base64 URL for SAVI (Soil-Adjusted Vegetation Index).
-    Calibrated for olive orchards:
-    - SAVI >= 0.28: Dense Healthy Canopy (Emerald Green)
-    - SAVI 0.20 - 0.28: Healthy Canopy (Lime Green)
-    - SAVI 0.14 - 0.20: Moderate Canopy (Yellow)
-    - SAVI < 0.14: Low Canopy / Stress (Red)
-    - Bare Soil / Cloud Shadow: Transparent
+    Generate RGBA heatmap PNG base64 URL for SAVI.
+    Covers 100% of field polygon. Only outside pixels & cloud shadows are transparent.
     """
     h, w = grid_savi.shape
     rgba = np.zeros((h, w, 4), dtype=np.uint8)
 
     for i in range(h):
         for j in range(w):
-            if not tree_mask[i, j]:
-                rgba[i, j] = [0, 0, 0, 0]          # Bare Soil / Cloud Shadow -> Transparent
+            if not poly_mask[i, j] or (cloud_shadow_mask is not None and cloud_shadow_mask[i, j]):
+                rgba[i, j] = [0, 0, 0, 0]          # Outside field or cloud shadow -> Transparent
                 continue
             val = grid_savi[i, j]
             if val >= 0.28:
-                rgba[i, j] = [16, 185, 129, 220]   # Emerald Green
+                rgba[i, j] = [16, 185, 129, 220]   # Emerald Green (Dense/Excellent)
             elif val >= 0.20:
-                rgba[i, j] = [132, 204, 22, 210]   # Lime Green
+                rgba[i, j] = [132, 204, 22, 210]   # Lime Green (Good)
             elif val >= 0.14:
-                rgba[i, j] = [234, 179, 8, 210]    # Yellow
+                rgba[i, j] = [234, 179, 8, 210]    # Yellow (Moderate)
             else:
-                rgba[i, j] = [239, 68, 68, 225]    # Red
+                rgba[i, j] = [239, 68, 68, 225]    # Red (Low canopy / bare soil inside field)
 
     img = Image.fromarray(rgba, mode="RGBA")
     buf = io.BytesIO()
@@ -135,14 +130,14 @@ def create_savi_heatmap(grid_savi: np.ndarray, tree_mask: np.ndarray) -> str:
     return f"data:image/png;base64,{base64.b64encode(buf.getvalue()).decode()}"
 
 
-def create_ndvi_heatmap(grid_ndvi: np.ndarray, tree_mask: np.ndarray) -> str:
-    """Generate RGBA heatmap PNG base64 URL for NDVI."""
+def create_ndvi_heatmap(grid_ndvi: np.ndarray, poly_mask: np.ndarray, cloud_shadow_mask: np.ndarray = None) -> str:
+    """Generate RGBA heatmap PNG base64 URL for NDVI covering 100% of field polygon."""
     h, w = grid_ndvi.shape
     rgba = np.zeros((h, w, 4), dtype=np.uint8)
 
     for i in range(h):
         for j in range(w):
-            if not tree_mask[i, j]:
+            if not poly_mask[i, j] or (cloud_shadow_mask is not None and cloud_shadow_mask[i, j]):
                 rgba[i, j] = [0, 0, 0, 0]
                 continue
             val = grid_ndvi[i, j]
@@ -161,21 +156,14 @@ def create_ndvi_heatmap(grid_ndvi: np.ndarray, tree_mask: np.ndarray) -> str:
     return f"data:image/png;base64,{base64.b64encode(buf.getvalue()).decode()}"
 
 
-def create_ndwi_heatmap(grid_ndwi: np.ndarray, tree_mask: np.ndarray) -> str:
-    """
-    Generate RGBA heatmap PNG base64 URL for NDWI hydric stress.
-    Calibrated for olive leaves:
-    - NDWI >= 0.02: Optimal Moisture (Blue)
-    - NDWI -0.10 to 0.02: Balanced Moisture (Cyan)
-    - NDWI -0.20 to -0.10: Mild Hydric Stress (Amber)
-    - NDWI < -0.20: Severe Stress (Red)
-    """
+def create_ndwi_heatmap(grid_ndwi: np.ndarray, poly_mask: np.ndarray, cloud_shadow_mask: np.ndarray = None) -> str:
+    """Generate RGBA heatmap PNG base64 URL for NDWI covering 100% of field polygon."""
     h, w = grid_ndwi.shape
     rgba = np.zeros((h, w, 4), dtype=np.uint8)
 
     for i in range(h):
         for j in range(w):
-            if not tree_mask[i, j]:
+            if not poly_mask[i, j] or (cloud_shadow_mask is not None and cloud_shadow_mask[i, j]):
                 rgba[i, j] = [0, 0, 0, 0]
                 continue
             val = grid_ndwi[i, j]
@@ -477,10 +465,10 @@ async def analyze_satellite(req: SatelliteAnalysisRequest):
     total_tree_pixels = max(1, len(valid_savi))
     hydric_stress_pct = round((stress_pixels / total_tree_pixels) * 100, 1)
 
-    # Generate Heatmaps with Soil & Shadow Transparency
-    savi_overlay = create_savi_heatmap(grid_savi, valid_mask)
-    ndvi_overlay = create_ndvi_heatmap(grid_ndvi, valid_mask)
-    ndwi_overlay = create_ndwi_heatmap(grid_ndwi, valid_mask)
+    # Generate Heatmaps covering 100% of field polygon (only cloud shadows & outside pixels are transparent)
+    savi_overlay = create_savi_heatmap(grid_savi, poly_mask, cloud_shadow_mask if 'cloud_shadow_mask' in locals() else None)
+    ndvi_overlay = create_ndvi_heatmap(grid_ndvi, poly_mask, cloud_shadow_mask if 'cloud_shadow_mask' in locals() else None)
+    ndwi_overlay = create_ndwi_heatmap(grid_ndwi, poly_mask, cloud_shadow_mask if 'cloud_shadow_mask' in locals() else None)
 
     # Calibrated Agronomic Advice for Olive Orchards
     if hydric_stress_pct > 25.0:
