@@ -1,7 +1,8 @@
 """
-Sentinel-2 Satellite Spectral Analysis Engine (Pure-Python Vercel-Compatible Pipeline)
-Reads actual GeoTIFF bands (B04, B08, B11) from Sentinel-2 COGs via HTTP Range requests using `tifffile` + `httpx`,
-without requiring GDAL or rasterio C dependencies. Fully compatible with Vercel Serverless!
+Sentinel-2 Satellite Spectral Analysis Engine for Olive Orchards & Field Crops.
+Includes SAVI (Soil-Adjusted Vegetation Index) to eliminate bare soil background noise,
+SCL (Scene Classification Layer) band filtering to remove cloud shadows & cloud noise,
+and calibrated NDWI hydric stress thresholds for Mediterranean orchards.
 """
 import os
 import base64
@@ -35,9 +36,7 @@ class SatelliteAnalysisRequest(BaseModel):
 
 class HttpSeekableFile:
     """
-    Lightweight seekable HTTP file wrapper for tifffile over HTTP Range requests.
-    Enables reading Cloud-Optimized GeoTIFF (COG) IFD headers and overview pages
-    directly over HTTP without downloading full multi-megabyte files.
+    Seekable HTTP file wrapper using Range requests for reading COG IFDs over HTTP.
     """
     def __init__(self, url: str, client: httpx.Client):
         self.url = url
@@ -75,7 +74,7 @@ class HttpSeekableFile:
             self._pos += len(data)
             return data
         except Exception as e:
-            print(f"HTTP Range read error ({headers}): {e}")
+            print(f"HTTP Range Read Error: {e}")
             return b""
 
 
@@ -102,26 +101,33 @@ def point_in_polygon(x: float, y: float, poly_coords: List[List[float]]) -> bool
     return inside
 
 
-def create_ndvi_heatmap(grid_ndvi: np.ndarray, mask: np.ndarray) -> str:
-    """Generate RGBA heatmap PNG base64 URL for NDVI. Non-vegetation pixels are transparent."""
-    h, w = grid_ndvi.shape
+def create_savi_heatmap(grid_savi: np.ndarray, tree_mask: np.ndarray) -> str:
+    """
+    Generate RGBA heatmap PNG base64 URL for SAVI (Soil-Adjusted Vegetation Index).
+    Calibrated for olive orchards:
+    - SAVI >= 0.28: Dense Healthy Canopy (Emerald Green)
+    - SAVI 0.20 - 0.28: Healthy Canopy (Lime Green)
+    - SAVI 0.14 - 0.20: Moderate Canopy (Yellow)
+    - SAVI < 0.14: Low Canopy / Stress (Red)
+    - Bare Soil / Cloud Shadow: Transparent
+    """
+    h, w = grid_savi.shape
     rgba = np.zeros((h, w, 4), dtype=np.uint8)
 
     for i in range(h):
         for j in range(w):
-            if not mask[i, j]:
+            if not tree_mask[i, j]:
+                rgba[i, j] = [0, 0, 0, 0]          # Bare Soil / Cloud Shadow -> Transparent
                 continue
-            val = grid_ndvi[i, j]
-            if val < 0.20:
-                rgba[i, j] = [0, 0, 0, 0]          # Non-vegetation -> Transparent
-            elif val >= 0.70:
-                rgba[i, j] = [16, 185, 129, 210]   # Dense canopy - Emerald
-            elif val >= 0.55:
-                rgba[i, j] = [132, 204, 22, 200]   # Healthy - Lime
-            elif val >= 0.38:
-                rgba[i, j] = [234, 179, 8, 200]    # Moderate - Yellow
+            val = grid_savi[i, j]
+            if val >= 0.28:
+                rgba[i, j] = [16, 185, 129, 220]   # Emerald Green
+            elif val >= 0.20:
+                rgba[i, j] = [132, 204, 22, 210]   # Lime Green
+            elif val >= 0.14:
+                rgba[i, j] = [234, 179, 8, 210]    # Yellow
             else:
-                rgba[i, j] = [239, 68, 68, 220]    # Stressed - Red
+                rgba[i, j] = [239, 68, 68, 225]    # Red
 
     img = Image.fromarray(rgba, mode="RGBA")
     buf = io.BytesIO()
@@ -129,24 +135,58 @@ def create_ndvi_heatmap(grid_ndvi: np.ndarray, mask: np.ndarray) -> str:
     return f"data:image/png;base64,{base64.b64encode(buf.getvalue()).decode()}"
 
 
-def create_ndwi_heatmap(grid_ndwi: np.ndarray, grid_ndvi: np.ndarray, mask: np.ndarray) -> str:
-    """Generate RGBA heatmap PNG base64 URL for NDWI. Non-vegetation pixels are transparent."""
+def create_ndvi_heatmap(grid_ndvi: np.ndarray, tree_mask: np.ndarray) -> str:
+    """Generate RGBA heatmap PNG base64 URL for NDVI."""
+    h, w = grid_ndvi.shape
+    rgba = np.zeros((h, w, 4), dtype=np.uint8)
+
+    for i in range(h):
+        for j in range(w):
+            if not tree_mask[i, j]:
+                rgba[i, j] = [0, 0, 0, 0]
+                continue
+            val = grid_ndvi[i, j]
+            if val >= 0.45:
+                rgba[i, j] = [16, 185, 129, 220]   # Emerald
+            elif val >= 0.32:
+                rgba[i, j] = [132, 204, 22, 210]   # Lime
+            elif val >= 0.22:
+                rgba[i, j] = [234, 179, 8, 210]    # Yellow
+            else:
+                rgba[i, j] = [239, 68, 68, 225]    # Red
+
+    img = Image.fromarray(rgba, mode="RGBA")
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    return f"data:image/png;base64,{base64.b64encode(buf.getvalue()).decode()}"
+
+
+def create_ndwi_heatmap(grid_ndwi: np.ndarray, tree_mask: np.ndarray) -> str:
+    """
+    Generate RGBA heatmap PNG base64 URL for NDWI hydric stress.
+    Calibrated for olive leaves:
+    - NDWI >= 0.02: Optimal Moisture (Blue)
+    - NDWI -0.10 to 0.02: Balanced Moisture (Cyan)
+    - NDWI -0.20 to -0.10: Mild Hydric Stress (Amber)
+    - NDWI < -0.20: Severe Stress (Red)
+    """
     h, w = grid_ndwi.shape
     rgba = np.zeros((h, w, 4), dtype=np.uint8)
 
     for i in range(h):
         for j in range(w):
-            if not mask[i, j] or grid_ndvi[i, j] < 0.20:
+            if not tree_mask[i, j]:
+                rgba[i, j] = [0, 0, 0, 0]
                 continue
             val = grid_ndwi[i, j]
-            if val >= 0.18:
-                rgba[i, j] = [59, 130, 246, 210]   # Optimal moisture - Blue
-            elif val >= 0.08:
-                rgba[i, j] = [6, 182, 212, 200]    # Balanced - Cyan
-            elif val >= -0.02:
-                rgba[i, j] = [245, 158, 11, 210]   # Mild stress - Amber
+            if val >= 0.02:
+                rgba[i, j] = [59, 130, 246, 210]   # Blue
+            elif val >= -0.10:
+                rgba[i, j] = [6, 182, 212, 200]    # Cyan
+            elif val >= -0.20:
+                rgba[i, j] = [245, 158, 11, 210]   # Amber
             else:
-                rgba[i, j] = [220, 38, 38, 230]    # Severe stress - Red
+                rgba[i, j] = [220, 38, 38, 230]    # Red
 
     img = Image.fromarray(rgba, mode="RGBA")
     buf = io.BytesIO()
@@ -226,15 +266,16 @@ def decode_band_crop(url: str, min_lng: float, min_lat: float, max_lng: float, m
 def read_real_bands_tifffile(assets: dict, min_lng, min_lat, max_lng, max_lat, scene_bbox=None, grid_size=64):
     """
     Pure-Python GeoTIFF band reader using `tifffile` and `httpx` HTTP range requests.
-    Reads real 10m Sentinel-2 B04 (Red), B08 (NIR), and B11 (SWIR) tile crops without GDAL/rasterio.
+    Reads 10m Sentinel-2 B04 (Red), B08 (NIR), B11 (SWIR), and SCL (Scene Classification) bands.
     """
     if not HAS_TIFFFILE:
-        return None, None, None
+        return None, None, None, None
 
     band_keys = {
         "red": ["red", "B04", "b04"],
         "nir": ["nir", "B08", "b08", "nir08"],
-        "swir": ["swir16", "B11", "b11", "swir_1"]
+        "swir": ["swir16", "B11", "b11", "swir_1"],
+        "scl": ["scl", "SCL"]
     }
 
     def find_url(assets, key_list):
@@ -246,13 +287,13 @@ def read_real_bands_tifffile(assets: dict, min_lng, min_lat, max_lng, max_lat, s
     red_url = find_url(assets, band_keys["red"])
     nir_url = find_url(assets, band_keys["nir"])
     swir_url = find_url(assets, band_keys["swir"])
+    scl_url = find_url(assets, band_keys["scl"])
 
     if not red_url or not nir_url or not scene_bbox:
-        return None, None, None
+        return None, None, None, None
 
     try:
         with httpx.Client(timeout=8.0, follow_redirects=True) as client:
-            # Decode 10m high-res tile crops for B04 (Red) and B08 (NIR)
             crop_red = decode_band_crop(red_url, min_lng, min_lat, max_lng, max_lat, scene_bbox, client)
             crop_nir = decode_band_crop(nir_url, min_lng, min_lat, max_lng, max_lat, scene_bbox, client)
 
@@ -263,30 +304,38 @@ def read_real_bands_tifffile(assets: dict, min_lng, min_lat, max_lng, max_lat, s
                 except Exception as e_swir:
                     print(f"SWIR read notice: {e_swir}")
 
-            # Resize crops to target grid_size x grid_size using PIL bilinear resampling
-            img_red = Image.fromarray(crop_red).resize((grid_size, grid_size), Image.Resampling.BILINEAR)
-            img_nir = Image.fromarray(crop_nir).resize((grid_size, grid_size), Image.Resampling.BILINEAR)
+            crop_scl = None
+            if scl_url:
+                try:
+                    crop_scl = decode_band_crop(scl_url, min_lng, min_lat, max_lng, max_lat, scene_bbox, client)
+                except Exception as e_scl:
+                    print(f"SCL read notice: {e_scl}")
 
-            grid_red = np.array(img_red, dtype=np.float32) / 10000.0
-            grid_nir = np.array(img_nir, dtype=np.float32) / 10000.0
+            # Resize crops to target grid_size x grid_size
+            grid_red = np.array(Image.fromarray(crop_red).resize((grid_size, grid_size), Image.Resampling.BILINEAR)) / 10000.0
+            grid_nir = np.array(Image.fromarray(crop_nir).resize((grid_size, grid_size), Image.Resampling.BILINEAR)) / 10000.0
 
             grid_swir = None
             if crop_swir is not None:
-                img_swir = Image.fromarray(crop_swir).resize((grid_size, grid_size), Image.Resampling.BILINEAR)
-                grid_swir = np.array(img_swir, dtype=np.float32) / 10000.0
+                grid_swir = np.array(Image.fromarray(crop_swir).resize((grid_size, grid_size), Image.Resampling.BILINEAR)) / 10000.0
 
-            return grid_red, grid_nir, grid_swir
+            grid_scl = None
+            if crop_scl is not None:
+                grid_scl = np.array(Image.fromarray(crop_scl).resize((grid_size, grid_size), Image.Resampling.NEAREST))
+
+            return grid_red, grid_nir, grid_swir, grid_scl
 
     except Exception as e:
         print(f"read_real_bands_tifffile error: {e}")
-        return None, None, None
+        return None, None, None, None
 
 
 def generate_clean_approximation(coords, min_lng, min_lat, max_lng, max_lat, grid_size=64):
-    """Clean coordinate-unique fallback approximation model if satellite STAC is offline."""
+    """Fallback model if satellite STAC is offline."""
+    grid_savi = np.zeros((grid_size, grid_size))
     grid_ndvi = np.zeros((grid_size, grid_size))
     grid_ndwi = np.zeros((grid_size, grid_size))
-    mask = np.zeros((grid_size, grid_size), dtype=bool)
+    poly_mask = np.zeros((grid_size, grid_size), dtype=bool)
 
     lons = np.linspace(min_lng, max_lng, grid_size)
     lats = np.linspace(max_lat, min_lat, grid_size)
@@ -294,29 +343,30 @@ def generate_clean_approximation(coords, min_lng, min_lat, max_lng, max_lat, gri
     coord_hash = int(hashlib.md5(f"{min_lng:.6f},{min_lat:.6f},{max_lng:.6f},{max_lat:.6f}".encode()).hexdigest()[:8], 16)
     rng = np.random.RandomState(coord_hash)
 
-    noise_ndvi = rng.uniform(-0.08, 0.08, (grid_size, grid_size))
-    noise_ndwi = rng.uniform(-0.06, 0.06, (grid_size, grid_size))
+    noise_savi = rng.uniform(-0.04, 0.04, (grid_size, grid_size))
+    noise_ndvi = rng.uniform(-0.06, 0.06, (grid_size, grid_size))
+    noise_ndwi = rng.uniform(-0.04, 0.04, (grid_size, grid_size))
     inside_count = 0
 
     for i in range(grid_size):
         for j in range(grid_size):
             x, y = lons[j], lats[i]
             if point_in_polygon(x, y, coords):
-                mask[i, j] = True
+                poly_mask[i, j] = True
                 inside_count += 1
-
-                base_ndvi = 0.62 + noise_ndvi[i, j]
-                base_ndwi = 0.14 + noise_ndwi[i, j]
 
                 rel_x = (x - min_lng) / (max_lng - min_lng + 1e-9)
                 rel_y = (y - min_lat) / (max_lat - min_lat + 1e-9)
-                base_ndvi += 0.06 * math.sin(rel_x * 3.7 + coord_hash % 7)
-                base_ndwi += 0.04 * math.cos(rel_y * 2.9 + coord_hash % 5)
 
-                grid_ndvi[i, j] = max(0.30, min(0.88, base_ndvi))
-                grid_ndwi[i, j] = max(-0.05, min(0.30, base_ndwi))
+                base_savi = 0.24 + noise_savi[i, j] + 0.04 * math.sin(rel_x * 3.7 + coord_hash % 7)
+                base_ndvi = 0.35 + noise_ndvi[i, j] + 0.06 * math.sin(rel_x * 3.7 + coord_hash % 7)
+                base_ndwi = -0.06 + noise_ndwi[i, j] + 0.03 * math.cos(rel_y * 2.9 + coord_hash % 5)
 
-    return grid_ndvi, grid_ndwi, mask, inside_count
+                grid_savi[i, j] = max(0.12, min(0.42, base_savi))
+                grid_ndvi[i, j] = max(0.20, min(0.65, base_ndvi))
+                grid_ndwi[i, j] = max(-0.25, min(0.08, base_ndwi))
+
+    return grid_savi, grid_ndvi, grid_ndwi, poly_mask, inside_count
 
 
 @router.post("/analyze")
@@ -332,14 +382,16 @@ async def analyze_satellite(req: SatelliteAnalysisRequest):
     # 1. Query STAC catalog for latest cloud-free Sentinel-2 scene
     stac_info = await query_sentinel2_stac(min_lng, min_lat, max_lng, max_lat)
 
+    grid_savi = None
     grid_ndvi = None
     grid_ndwi = None
-    mask = None
+    poly_mask = None
+    tree_mask = None
     inside_count = 0
 
-    # 2. Try pure-Python tifffile HTTP range reader on Vercel
+    # 2. Try pure-Python tifffile HTTP range reader with SCL & SAVI
     if stac_info and stac_info.get("assets") and HAS_TIFFFILE:
-        grid_red, grid_nir, grid_swir = read_real_bands_tifffile(
+        grid_red, grid_nir, grid_swir, grid_scl = read_real_bands_tifffile(
             stac_info["assets"], min_lng, min_lat, max_lng, max_lat,
             scene_bbox=stac_info.get("bbox"), grid_size=grid_size
         )
@@ -347,67 +399,96 @@ async def analyze_satellite(req: SatelliteAnalysisRequest):
         if grid_red is not None and grid_nir is not None:
             data_source = "sentinel-2-real"
 
-            # Calculate real NDVI = (NIR - Red) / (NIR + Red)
+            # Calculate SAVI (Soil-Adjusted Vegetation Index with L = 0.5)
+            L = 0.5
+            denom_savi = grid_nir + grid_red + L
+            grid_savi = np.where(denom_savi > 0, ((grid_nir - grid_red) * (1.0 + L)) / denom_savi, 0.0)
+
+            # Calculate NDVI
             denom_ndvi = grid_nir + grid_red
             grid_ndvi = np.where(denom_ndvi > 0, (grid_nir - grid_red) / denom_ndvi, 0.0)
 
-            # Calculate real NDWI = (NIR - SWIR) / (NIR + SWIR)
+            # Calculate NDWI
             if grid_swir is not None:
                 denom_ndwi = grid_nir + grid_swir
                 grid_ndwi = np.where(denom_ndwi > 0, (grid_nir - grid_swir) / denom_ndwi, 0.0)
             else:
                 grid_ndwi = grid_ndvi * 0.45 - 0.05
 
+            # Apply polygon boundary mask
             lons = np.linspace(min_lng, max_lng, grid_size)
             lats = np.linspace(max_lat, min_lat, grid_size)
-            mask = np.zeros((grid_size, grid_size), dtype=bool)
+            poly_mask = np.zeros((grid_size, grid_size), dtype=bool)
 
             for i in range(grid_size):
                 for j in range(grid_size):
                     if point_in_polygon(lons[j], lats[i], coords):
-                        mask[i, j] = True
+                        poly_mask[i, j] = True
                         inside_count += 1
 
+            # Cloud & Cloud-Shadow Filtering via SCL
+            cloud_shadow_mask = np.zeros((grid_size, grid_size), dtype=bool)
+            if grid_scl is not None:
+                # SCL Classes to filter out: 3 (Cloud Shadow), 8 (Cloud Medium), 9 (Cloud High), 10 (Cirrus), 11 (Snow/Ice)
+                cloud_shadow_mask = np.isin(grid_scl, [3, 8, 9, 10, 11])
+
+            # Soil Background Masking & Tree Canopy Filter:
+            # Keep pixels inside polygon that are NOT cloud shadows AND have NDVI >= 0.18 (tree canopy cover)
+            tree_mask = poly_mask & (~cloud_shadow_mask) & (grid_ndvi >= 0.18)
+
+            grid_savi = np.clip(grid_savi, -1.0, 1.0)
             grid_ndvi = np.clip(grid_ndvi, -1.0, 1.0)
             grid_ndwi = np.clip(grid_ndwi, -1.0, 1.0)
 
     # 3. Fallback to clean approximation if real data is offline
-    if grid_ndvi is None:
+    if grid_savi is None:
         data_source = "approximation"
-        grid_ndvi, grid_ndwi, mask, inside_count = generate_clean_approximation(
+        grid_savi, grid_ndvi, grid_ndwi, poly_mask, inside_count = generate_clean_approximation(
             coords, min_lng, min_lat, max_lng, max_lat, grid_size
         )
+        tree_mask = poly_mask & (grid_ndvi >= 0.18)
 
     if inside_count == 0:
-        mask[:, :] = True
-        inside_count = grid_size * grid_size
+        poly_mask[:, :] = True
+        tree_mask = poly_mask & (grid_ndvi >= 0.18)
 
-    # 4. Compute statistics on field vegetation pixels
-    veg_mask = mask & (grid_ndvi >= 0.20)
-    valid_ndvi = grid_ndvi[veg_mask] if np.any(veg_mask) else grid_ndvi[mask]
-    valid_ndwi = grid_ndwi[veg_mask] if np.any(veg_mask) else grid_ndwi[mask]
+    # Fallback to poly_mask if tree_mask is empty
+    valid_mask = tree_mask if np.any(tree_mask) else poly_mask
 
-    mean_ndvi = float(np.mean(valid_ndvi)) if len(valid_ndvi) > 0 else 0.0
-    min_ndvi_val = float(np.min(valid_ndvi)) if len(valid_ndvi) > 0 else 0.0
-    max_ndvi_val = float(np.max(valid_ndvi)) if len(valid_ndvi) > 0 else 0.0
+    # 4. Compute statistics STRICTLY on tree canopy pixels (excluding soil & cloud noise)
+    valid_savi = grid_savi[valid_mask]
+    valid_ndvi = grid_ndvi[valid_mask]
+    valid_ndwi = grid_ndwi[valid_mask]
 
-    mean_ndwi = float(np.mean(valid_ndwi)) if len(valid_ndwi) > 0 else 0.0
-    min_ndwi_val = float(np.min(valid_ndwi)) if len(valid_ndwi) > 0 else 0.0
-    max_ndwi_val = float(np.max(valid_ndwi)) if len(valid_ndwi) > 0 else 0.0
+    mean_savi = float(np.mean(valid_savi))
+    min_savi_val = float(np.min(valid_savi))
+    max_savi_val = float(np.max(valid_savi))
 
-    stress_pixels = np.sum(veg_mask & (grid_ndwi < -0.02)) if np.any(veg_mask) else 0
-    veg_count = np.sum(veg_mask) if np.any(veg_mask) else 1
-    hydric_stress_pct = round((stress_pixels / veg_count) * 100, 1)
+    mean_ndvi = float(np.mean(valid_ndvi))
+    min_ndvi_val = float(np.min(valid_ndvi))
+    max_ndvi_val = float(np.max(valid_ndvi))
 
-    ndvi_overlay = create_ndvi_heatmap(grid_ndvi, mask)
-    ndwi_overlay = create_ndwi_heatmap(grid_ndwi, grid_ndvi, mask)
+    mean_ndwi = float(np.mean(valid_ndwi))
+    min_ndwi_val = float(np.min(valid_ndwi))
+    max_ndwi_val = float(np.max(valid_ndwi))
 
-    if hydric_stress_pct > 15.0:
-        advice_ar = f"⚠️ تم كشف إجهاد مائي بنسبة {hydric_stress_pct}% من مساحة أشجار {req.cropType}. يُنصح بزيادة مدة الري بمقدار 20 دقيقة وتفقد خطوط التنقيط."
-    elif hydric_stress_pct > 5.0:
-        advice_ar = f"💡 إجهاد مائي جزئي ({hydric_stress_pct}%). الحالة العامة جيدة (NDVI: {mean_ndvi:.2f})."
+    # Calibrated Hydric Stress calculation on Tree Canopy pixels only (NDWI < -0.16)
+    stress_pixels = np.sum(valid_mask & (grid_ndwi < -0.16))
+    total_tree_pixels = max(1, len(valid_savi))
+    hydric_stress_pct = round((stress_pixels / total_tree_pixels) * 100, 1)
+
+    # Generate Heatmaps with Soil & Shadow Transparency
+    savi_overlay = create_savi_heatmap(grid_savi, valid_mask)
+    ndvi_overlay = create_ndvi_heatmap(grid_ndvi, valid_mask)
+    ndwi_overlay = create_ndwi_heatmap(grid_ndwi, valid_mask)
+
+    # Calibrated Agronomic Advice for Olive Orchards
+    if hydric_stress_pct > 25.0:
+        advice_ar = f"⚠️ تم كشف إجهاد مائي جزئي بنسبة {hydric_stress_pct}% في غطاء الأشجار. يُنصح بزيادة الري بمقدار 20 دقيقة للقطاعات المتأثرة."
+    elif hydric_stress_pct > 10.0:
+        advice_ar = f"💡 حالة ري متوازنة مع إجهاد خفيف جداً ({hydric_stress_pct}%). غطاء أشجار {req.cropType} في صحة ممتازة (SAVI: {mean_savi:.2f})."
     else:
-        advice_ar = f"✅ أشجار {req.cropType} في حالة صحة ورطوبة ممتازة (NDVI: {mean_ndvi:.2f}, NDWI: {mean_ndwi:.2f})."
+        advice_ar = f"✅ أشجار {req.cropType} في حالة صحة ورطوبة ممتازة (SAVI: {mean_savi:.2f}, NDVI: {mean_ndvi:.2f}). جدول الري متوازن تماماً."
 
     scene_id = stac_info.get("id", "N/A") if stac_info else "N/A"
     scene_date = stac_info.get("date", "N/A") if stac_info else "N/A"
@@ -421,11 +502,18 @@ async def analyze_satellite(req: SatelliteAnalysisRequest):
         "cloudCover": cloud_cover,
         "lastPassDate": scene_date,
         "bounds": [[min_lat, min_lng], [max_lat, max_lng]],
+        "savi": {
+            "mean": round(mean_savi, 3),
+            "min": round(min_savi_val, 3),
+            "max": round(max_savi_val, 3),
+            "healthStatus": "EXCELLENT" if mean_savi >= 0.24 else ("GOOD" if mean_savi >= 0.18 else "MODERATE"),
+            "overlayDataUrl": savi_overlay,
+        },
         "ndvi": {
             "mean": round(mean_ndvi, 3),
             "min": round(min_ndvi_val, 3),
             "max": round(max_ndvi_val, 3),
-            "healthStatus": "EXCELLENT" if mean_ndvi > 0.65 else ("GOOD" if mean_ndvi > 0.45 else "MODERATE"),
+            "healthStatus": "EXCELLENT" if mean_ndvi >= 0.40 else ("GOOD" if mean_ndvi >= 0.28 else "MODERATE"),
             "overlayDataUrl": ndvi_overlay,
         },
         "ndwi": {
@@ -433,7 +521,7 @@ async def analyze_satellite(req: SatelliteAnalysisRequest):
             "min": round(min_ndwi_val, 3),
             "max": round(max_ndwi_val, 3),
             "hydricStressPct": hydric_stress_pct,
-            "stressStatus": "HIGH_STRESS" if hydric_stress_pct > 15 else ("MODERATE_STRESS" if hydric_stress_pct > 5 else "OPTIMAL"),
+            "stressStatus": "HIGH_STRESS" if hydric_stress_pct > 25 else ("MODERATE_STRESS" if hydric_stress_pct > 10 else "OPTIMAL"),
             "overlayDataUrl": ndwi_overlay,
         },
         "agronomicAdvice": advice_ar
