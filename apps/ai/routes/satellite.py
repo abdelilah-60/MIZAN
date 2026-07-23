@@ -185,10 +185,48 @@ async def query_sentinel2_stac(min_lng, min_lat, max_lng, max_lat):
     return None
 
 
+def decode_band_crop(url: str, min_lng: float, min_lat: float, max_lng: float, max_lat: float, scene_bbox: list, client: httpx.Client):
+    f = HttpSeekableFile(url, client)
+    with tifffile.TiffFile(f) as tif:
+        p0 = tif.pages[0]
+        full_w, full_h = p0.shape[1], p0.shape[0]
+        s_min_lng, s_min_lat, s_max_lng, s_max_lat = scene_bbox
+
+        px_min_x = int((min_lng - s_min_lng) / (s_max_lng - s_min_lng + 1e-9) * full_w)
+        px_max_x = int((max_lng - s_min_lng) / (s_max_lng - s_min_lng + 1e-9) * full_w)
+        px_min_y = int((s_max_lat - max_lat) / (s_max_lat - s_min_lat + 1e-9) * full_h)
+        px_max_y = int((s_max_lat - min_lat) / (s_max_lat - s_min_lat + 1e-9) * full_h)
+
+        tile_w = p0.tilewidth if p0.is_tiled else full_w
+        tile_h = p0.tilelength if p0.is_tiled else full_h
+        tiles_per_row = max(1, full_w // tile_w)
+
+        center_x = (px_min_x + px_max_x) // 2
+        center_y = (px_min_y + px_max_y) // 2
+        tile_col = min(max(0, tiles_per_row - 1), max(0, center_x // tile_w))
+        tile_row = min(max(0, tiles_per_row - 1), max(0, center_y // tile_h))
+        tile_index = tile_row * tiles_per_row + tile_col
+
+        offset = p0.dataoffsets[tile_index]
+        bytecount = p0.databytecounts[tile_index]
+        f.seek(offset)
+        compressed_bytes = f.read(bytecount)
+        raw_arr = p0.decode(compressed_bytes, tile_index)[0]
+        tile_2d = np.squeeze(raw_arr)
+
+        l_x1 = max(0, min(tile_w, px_min_x - tile_col * tile_w))
+        l_x2 = max(l_x1 + 1, min(tile_w, px_max_x - tile_col * tile_w))
+        l_y1 = max(0, min(tile_h, px_min_y - tile_row * tile_h))
+        l_y2 = max(l_y1 + 1, min(tile_h, px_max_y - tile_row * tile_h))
+
+        crop = tile_2d[l_y1:l_y2, l_x1:l_x2].astype(np.float32)
+        return crop
+
+
 def read_real_bands_tifffile(assets: dict, min_lng, min_lat, max_lng, max_lat, scene_bbox=None, grid_size=64):
     """
     Pure-Python GeoTIFF band reader using `tifffile` and `httpx` HTTP range requests.
-    Reads real Sentinel-2 B04 (Red), B08 (NIR), and B11 (SWIR) bands without GDAL/rasterio.
+    Reads real 10m Sentinel-2 B04 (Red), B08 (NIR), and B11 (SWIR) tile crops without GDAL/rasterio.
     """
     if not HAS_TIFFFILE:
         return None, None, None
@@ -209,54 +247,23 @@ def read_real_bands_tifffile(assets: dict, min_lng, min_lat, max_lng, max_lat, s
     nir_url = find_url(assets, band_keys["nir"])
     swir_url = find_url(assets, band_keys["swir"])
 
-    if not red_url or not nir_url:
+    if not red_url or not nir_url or not scene_bbox:
         return None, None, None
 
     try:
         with httpx.Client(timeout=8.0, follow_redirects=True) as client:
-            # 1. Read B04 (Red) band overview page
-            file_red = HttpSeekableFile(red_url, client)
-            with tifffile.TiffFile(file_red) as tif_red:
-                # Select a fast medium-overview page (index -2 or -1)
-                page_red = tif_red.pages[-2] if len(tif_red.pages) > 1 else tif_red.pages[0]
-                arr_red = page_red.asarray().astype(np.float32)
+            # Decode 10m high-res tile crops for B04 (Red) and B08 (NIR)
+            crop_red = decode_band_crop(red_url, min_lng, min_lat, max_lng, max_lat, scene_bbox, client)
+            crop_nir = decode_band_crop(nir_url, min_lng, min_lat, max_lng, max_lat, scene_bbox, client)
 
-            # 2. Read B08 (NIR) band overview page
-            file_nir = HttpSeekableFile(nir_url, client)
-            with tifffile.TiffFile(file_nir) as tif_nir:
-                page_nir = tif_nir.pages[-2] if len(tif_nir.pages) > 1 else tif_nir.pages[0]
-                arr_nir = page_nir.asarray().astype(np.float32)
-
-            # 3. Read B11 (SWIR) band overview page if available
-            arr_swir = None
+            crop_swir = None
             if swir_url:
                 try:
-                    file_swir = HttpSeekableFile(swir_url, client)
-                    with tifffile.TiffFile(file_swir) as tif_swir:
-                        page_swir = tif_swir.pages[-2] if len(tif_swir.pages) > 1 else tif_swir.pages[0]
-                        arr_swir = page_swir.asarray().astype(np.float32)
+                    crop_swir = decode_band_crop(swir_url, min_lng, min_lat, max_lng, max_lat, scene_bbox, client)
                 except Exception as e_swir:
                     print(f"SWIR read notice: {e_swir}")
 
-            # Crop/Extract bounding box if scene_bbox [min_lon, min_lat, max_lon, max_lat] is available
-            h, w = arr_red.shape
-            if scene_bbox and len(scene_bbox) == 4:
-                s_min_lng, s_min_lat, s_max_lng, s_max_lat = scene_bbox
-                # Calculate sub-window pixel indices inside overview image
-                px_min = int(max(0, min(w - 1, (min_lng - s_min_lng) / (s_max_lng - s_min_lng + 1e-9) * w)))
-                px_max = int(max(px_min + 1, min(w, (max_lng - s_min_lng) / (s_max_lng - s_min_lng + 1e-9) * w)))
-                py_min = int(max(0, min(h - 1, (s_max_lat - max_lat) / (s_max_lat - s_min_lat + 1e-9) * h)))
-                py_max = int(max(py_min + 1, min(h, (s_max_lat - min_lat) / (s_max_lat - s_min_lat + 1e-9) * h)))
-
-                crop_red = arr_red[py_min:py_max, px_min:px_max]
-                crop_nir = arr_nir[py_min:py_max, px_min:px_max]
-                crop_swir = arr_swir[py_min:py_max, px_min:px_max] if arr_swir is not None else None
-            else:
-                crop_red = arr_red
-                crop_nir = arr_nir
-                crop_swir = arr_swir
-
-            # Resize crops to target grid_size x grid_size using PIL image resampling
+            # Resize crops to target grid_size x grid_size using PIL bilinear resampling
             img_red = Image.fromarray(crop_red).resize((grid_size, grid_size), Image.Resampling.BILINEAR)
             img_nir = Image.fromarray(crop_nir).resize((grid_size, grid_size), Image.Resampling.BILINEAR)
 
