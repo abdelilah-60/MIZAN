@@ -487,6 +487,22 @@ export function FieldWorkspace({
                 )}
               </button>
             </div>
+            {/* Data Source Badge */}
+            {satelliteData && (
+              <div className={`bg-slate-950/80 backdrop-blur-md border px-2 py-1 rounded-full text-[8px] font-bold flex items-center gap-1.5 shadow-lg ${
+                satelliteData.dataSource === "sentinel-2-real"
+                  ? "border-emerald-500/30 text-emerald-400"
+                  : "border-amber-500/30 text-amber-400"
+              }`}>
+                <span className={`w-1.5 h-1.5 rounded-full animate-pulse ${
+                  satelliteData.dataSource === "sentinel-2-real" ? "bg-emerald-400" : "bg-amber-400"
+                }`} />
+                <span>{satelliteData.dataSource === "sentinel-2-real" ? "بيانات حقيقية ✓" : "تقريبي (Demo)"}</span>
+                {satelliteData.lastPassDate && satelliteData.lastPassDate !== "N/A" && (
+                  <span className="text-slate-400 font-mono">{satelliteData.lastPassDate}</span>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Close Button */}
