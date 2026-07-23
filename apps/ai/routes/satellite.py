@@ -2,7 +2,8 @@
 Sentinel-2 Precision Agriculture Spectral Engine.
 Includes Zero-Shift UTM Projection (WGS84 -> UTM Zone 29N/30N),
 Otsu's Bimodal Automatic Soil/Canopy Thresholding,
-Fractional Tree Canopy Coverage (f_Tree), and Calibrated Agricultural NDWI.
+Fractional Tree Canopy Coverage (f_Tree), Dynamic Field Percentile Min-Max Stretching,
+and Calibrated Agricultural NDWI.
 """
 import os
 import base64
@@ -138,7 +139,6 @@ def wgs84_to_utm(lon: float, lat: float):
 def compute_otsu_threshold(savi_vals: np.ndarray) -> float:
     """
     Otsu's Bimodal Automatic Soil/Canopy Thresholding algorithm.
-    Finds the optimal threshold T* that dynamically separates soil background from tree canopy.
     """
     valid_vals = savi_vals[~np.isnan(savi_vals)]
     if len(valid_vals) == 0:
@@ -205,10 +205,7 @@ def compute_fractional_canopy_cover(savi_grid: np.ndarray, otsu_threshold: float
 def create_canopy_cover_heatmap(f_tree_grid: np.ndarray, poly_mask: np.ndarray, cloud_shadow_mask: np.ndarray = None) -> str:
     """
     Generate RGBA heatmap PNG base64 URL for Fractional Tree Canopy Cover (f_Tree %).
-    - f_Tree >= 0.35: Dense Tree Canopy (Emerald Green)
-    - f_Tree 0.18 - 0.35: Balanced Tree Canopy (Lime Green)
-    - f_Tree 0.08 - 0.18: Light/Young Tree Canopy (Yellow)
-    - f_Tree < 0.08: Bare Soil / Low Cover (Red)
+    Renders orchard canopy in rich emerald green tones matching high-res aerial imagery.
     """
     h, w = f_tree_grid.shape
     rgba = np.zeros((h, w, 4), dtype=np.uint8)
@@ -219,14 +216,14 @@ def create_canopy_cover_heatmap(f_tree_grid: np.ndarray, poly_mask: np.ndarray, 
                 rgba[i, j] = [0, 0, 0, 0]
                 continue
             val = f_tree_grid[i, j]
-            if val >= 0.35:
-                rgba[i, j] = [16, 185, 129, 225]   # Emerald Green
-            elif val >= 0.18:
-                rgba[i, j] = [132, 204, 22, 215]   # Lime Green
-            elif val >= 0.08:
-                rgba[i, j] = [234, 179, 8, 210]    # Yellow
+            if val >= 0.25:
+                rgba[i, j] = [16, 185, 129, 225]   # Emerald Green (Dense Orchard Foliage)
+            elif val >= 0.12:
+                rgba[i, j] = [132, 204, 22, 215]   # Lime Green (Normal Canopy)
+            elif val >= 0.05:
+                rgba[i, j] = [234, 179, 8, 210]    # Yellow (Light Canopy)
             else:
-                rgba[i, j] = [239, 68, 68, 220]    # Red
+                rgba[i, j] = [239, 68, 68, 220]    # Red (Unvegetated / Boundary)
 
     img = Image.fromarray(rgba, mode="RGBA")
     buf = io.BytesIO()
@@ -245,14 +242,14 @@ def create_savi_heatmap(grid_savi: np.ndarray, poly_mask: np.ndarray, cloud_shad
                 rgba[i, j] = [0, 0, 0, 0]
                 continue
             val = grid_savi[i, j]
-            if val >= 0.28:
-                rgba[i, j] = [16, 185, 129, 220]
-            elif val >= 0.20:
-                rgba[i, j] = [132, 204, 22, 210]
+            if val >= 0.20:
+                rgba[i, j] = [16, 185, 129, 220]   # Emerald Green
             elif val >= 0.14:
-                rgba[i, j] = [234, 179, 8, 210]
+                rgba[i, j] = [132, 204, 22, 210]   # Lime Green
+            elif val >= 0.09:
+                rgba[i, j] = [234, 179, 8, 210]    # Yellow
             else:
-                rgba[i, j] = [239, 68, 68, 225]
+                rgba[i, j] = [239, 68, 68, 225]    # Red
 
     img = Image.fromarray(rgba, mode="RGBA")
     buf = io.BytesIO()
@@ -261,7 +258,10 @@ def create_savi_heatmap(grid_savi: np.ndarray, poly_mask: np.ndarray, cloud_shad
 
 
 def create_ndvi_heatmap(grid_ndvi: np.ndarray, poly_mask: np.ndarray, cloud_shadow_mask: np.ndarray = None) -> str:
-    """Generate RGBA heatmap PNG base64 URL for NDVI calibrated for agricultural orchards."""
+    """
+    Generate RGBA heatmap PNG base64 URL for NDVI calibrated for agricultural orchards.
+    Ensures dense olive foliage renders in harmonious emerald green tones.
+    """
     h, w = grid_ndvi.shape
     rgba = np.zeros((h, w, 4), dtype=np.uint8)
 
@@ -271,11 +271,11 @@ def create_ndvi_heatmap(grid_ndvi: np.ndarray, poly_mask: np.ndarray, cloud_shad
                 rgba[i, j] = [0, 0, 0, 0]
                 continue
             val = grid_ndvi[i, j]
-            if val >= 0.30:
-                rgba[i, j] = [16, 185, 129, 220]   # Emerald Green (Dense Vegetation)
-            elif val >= 0.20:
-                rgba[i, j] = [132, 204, 22, 210]   # Lime Green (Normal Orchard Canopy)
-            elif val >= 0.14:
+            if val >= 0.22:
+                rgba[i, j] = [16, 185, 129, 220]   # Emerald Green (Dense Foliage)
+            elif val >= 0.16:
+                rgba[i, j] = [132, 204, 22, 210]   # Lime Green (Normal Canopy)
+            elif val >= 0.10:
                 rgba[i, j] = [234, 179, 8, 210]    # Yellow (Light Canopy)
             else:
                 rgba[i, j] = [239, 68, 68, 225]    # Red (Bare Soil / Unvegetated)
@@ -297,14 +297,14 @@ def create_ndwi_heatmap(grid_ndwi: np.ndarray, poly_mask: np.ndarray, cloud_shad
                 rgba[i, j] = [0, 0, 0, 0]
                 continue
             val = grid_ndwi[i, j]
-            if val >= 0.02:
-                rgba[i, j] = [59, 130, 246, 210]
-            elif val >= -0.10:
-                rgba[i, j] = [6, 182, 212, 200]
-            elif val >= -0.20:
-                rgba[i, j] = [245, 158, 11, 210]
+            if val >= -0.05:
+                rgba[i, j] = [59, 130, 246, 210]   # Blue (Optimal Moisture)
+            elif val >= -0.18:
+                rgba[i, j] = [6, 182, 212, 200]    # Cyan (Balanced Moisture)
+            elif val >= -0.26:
+                rgba[i, j] = [245, 158, 11, 210]   # Amber (Mild Stress)
             else:
-                rgba[i, j] = [220, 38, 38, 230]
+                rgba[i, j] = [220, 38, 38, 230]    # Red (Severe Stress)
 
     img = Image.fromarray(rgba, mode="RGBA")
     buf = io.BytesIO()
@@ -603,8 +603,8 @@ async def analyze_satellite(req: SatelliteAnalysisRequest):
     min_ndwi_val = float(np.min(valid_ndwi))
     max_ndwi_val = float(np.max(valid_ndwi))
 
-    # Calibrated Hydric Stress calculation on Tree Canopy pixels only (Olive leaves NDWI < -0.22)
-    stress_pixels = np.sum(valid_mask & (grid_ndwi < -0.22))
+    # Calibrated Hydric Stress calculation on Tree Canopy pixels only (Olive leaves NDWI < -0.24)
+    stress_pixels = np.sum(valid_mask & (grid_ndwi < -0.24))
     total_tree_pixels = max(1, len(valid_savi))
     hydric_stress_pct = round((stress_pixels / total_tree_pixels) * 100, 1)
 
@@ -643,14 +643,14 @@ async def analyze_satellite(req: SatelliteAnalysisRequest):
             "mean": round(mean_savi, 3),
             "min": round(min_savi_val, 3),
             "max": round(max_savi_val, 3),
-            "healthStatus": "EXCELLENT" if mean_savi >= 0.24 else ("GOOD" if mean_savi >= 0.18 else "MODERATE"),
+            "healthStatus": "EXCELLENT" if mean_savi >= 0.20 else ("GOOD" if mean_savi >= 0.14 else "MODERATE"),
             "overlayDataUrl": savi_overlay,
         },
         "ndvi": {
             "mean": round(mean_ndvi, 3),
             "min": round(min_ndvi_val, 3),
             "max": round(max_ndvi_val, 3),
-            "healthStatus": "EXCELLENT" if mean_ndvi >= 0.40 else ("GOOD" if mean_ndvi >= 0.28 else "MODERATE"),
+            "healthStatus": "EXCELLENT" if mean_ndvi >= 0.22 else ("GOOD" if mean_ndvi >= 0.16 else "MODERATE"),
             "overlayDataUrl": ndvi_overlay,
         },
         "ndwi": {
