@@ -42,7 +42,7 @@ type WorkspaceTab = "agronomy" | "insights" | "operations";
 
 interface SatelliteFieldCoverProps {
   geoPolygon?: any;
-  satelliteMode: "SATELLITE" | "SAVI" | "NDVI" | "NDWI";
+  satelliteMode: "SATELLITE" | "CANOPY" | "SAVI" | "NDVI" | "NDWI";
   satelliteData: any;
 }
 
@@ -137,8 +137,10 @@ function SatelliteFieldCover({ geoPolygon, satelliteMode, satelliteData }: Satel
     });
     L.marker(center, { icon: pulseIcon }).addTo(map);
 
-    // 3. Render Overlay Image for SAVI / NDVI / NDWI if selected and data is ready
-    if (satelliteMode === "SAVI" && satelliteData?.savi?.overlayDataUrl && bounds.isValid()) {
+    // 3. Render Overlay Image for CANOPY / SAVI / NDVI / NDWI if selected and data is ready
+    if (satelliteMode === "CANOPY" && satelliteData?.canopyCover?.overlayDataUrl && bounds.isValid()) {
+      L.imageOverlay(satelliteData.canopyCover.overlayDataUrl, bounds, { opacity: 0.88 }).addTo(map);
+    } else if (satelliteMode === "SAVI" && satelliteData?.savi?.overlayDataUrl && bounds.isValid()) {
       L.imageOverlay(satelliteData.savi.overlayDataUrl, bounds, { opacity: 0.88 }).addTo(map);
     } else if (satelliteMode === "NDVI" && satelliteData?.ndvi?.overlayDataUrl && bounds.isValid()) {
       L.imageOverlay(satelliteData.ndvi.overlayDataUrl, bounds, { opacity: 0.88 }).addTo(map);
@@ -188,7 +190,7 @@ export function FieldWorkspace({
   onClose,
 }: FieldWorkspaceProps) {
   const [activeTab, setActiveTab] = useState<WorkspaceTab>("agronomy");
-  const [satelliteMode, setSatelliteMode] = useState<"SATELLITE" | "SAVI" | "NDVI" | "NDWI">("SAVI");
+  const [satelliteMode, setSatelliteMode] = useState<"SATELLITE" | "CANOPY" | "SAVI" | "NDVI" | "NDWI">("CANOPY");
   const [satelliteData, setSatelliteData] = useState<any>(null);
   const [loadingSatellite, setLoadingSatellite] = useState<boolean>(false);
 
@@ -455,15 +457,34 @@ export function FieldWorkspace({
 
               <button
                 type="button"
-                onClick={() => setSatelliteMode("SAVI")}
+                onClick={() => setSatelliteMode("CANOPY")}
                 className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all flex items-center gap-1.5 ${
-                  satelliteMode === "SAVI"
+                  satelliteMode === "CANOPY"
                     ? "bg-emerald-400 text-slate-950 shadow-md font-black"
                     : "text-slate-300 hover:text-white hover:bg-white/5"
                 }`}
-                title="Soil-Adjusted Vegetation Index (مخصّص للأشجار والزيتون)"
+                title="Fractional Tree Canopy Coverage (% كثافة الأشجار حقيقية وفق خوارزمية أوتسو)"
               >
                 <span>🌳</span>
+                <span>كثافة الأشجار (% Cover)</span>
+                {satelliteData?.canopyCover && (
+                  <span className="bg-slate-950/40 text-slate-950 px-1.5 py-0.2 rounded font-mono text-[9px]">
+                    {satelliteData.canopyCover.meanPct}%
+                  </span>
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setSatelliteMode("SAVI")}
+                className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all flex items-center gap-1.5 ${
+                  satelliteMode === "SAVI"
+                    ? "bg-teal-400 text-slate-950 shadow-md font-black"
+                    : "text-slate-300 hover:text-white hover:bg-white/5"
+                }`}
+                title="Soil-Adjusted Vegetation Index"
+              >
+                <span>🌿</span>
                 <span>صحة الأشجار (SAVI)</span>
                 {satelliteData?.savi && (
                   <span className="bg-slate-950/40 text-slate-950 px-1.5 py-0.2 rounded font-mono text-[9px]">
@@ -477,11 +498,11 @@ export function FieldWorkspace({
                 onClick={() => setSatelliteMode("NDVI")}
                 className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all flex items-center gap-1.5 ${
                   satelliteMode === "NDVI"
-                    ? "bg-teal-400 text-slate-950 shadow-md font-black"
+                    ? "bg-cyan-400 text-slate-950 shadow-md font-black"
                     : "text-slate-300 hover:text-white hover:bg-white/5"
                 }`}
               >
-                <span>🌿</span>
+                <span>🌱</span>
                 <span>الغطاء النباتي (NDVI)</span>
                 {satelliteData?.ndvi && (
                   <span className="bg-slate-950/40 text-slate-950 px-1.5 py-0.2 rounded font-mono text-[9px]">
@@ -537,20 +558,28 @@ export function FieldWorkspace({
             </svg>
           </button>
 
-          {/* Legend Banner when SAVI / NDVI or NDWI is active */}
+          {/* Legend Banner when CANOPY / SAVI / NDVI or NDWI is active */}
           {satelliteMode !== "SATELLITE" && (
             <div className="absolute top-14 left-3 z-20 bg-slate-950/90 backdrop-blur-md border border-white/10 px-3 py-1.5 rounded-xl text-[9px] font-mono text-slate-300 flex items-center gap-3 shadow-xl animate-in fade-in flex-wrap">
-              {satelliteMode === "SAVI" ? (
+              {satelliteMode === "CANOPY" ? (
+                <>
+                  <span className="font-bold text-emerald-400">كثافة الأشجار الحقيقية (% Cover):</span>
+                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-500"></span> كثيفة عالية (&ge;35%)</span>
+                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-lime-500"></span> متوازنة (18%-35%)</span>
+                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-500"></span> خفيفة/فتية (8%-18%)</span>
+                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-500"></span> تربة/منخفضة (&lt;8%)</span>
+                </>
+              ) : satelliteMode === "SAVI" ? (
                 <>
                   <span className="font-bold text-emerald-400">صحة الأشجار (SAVI):</span>
-                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-500"></span> كثيفة ممتازة (&ge;0.28)</span>
+                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-500"></span> ممتازة (&ge;0.28)</span>
                   <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-lime-500"></span> جيدة (0.20-0.28)</span>
                   <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-500"></span> متوسطة (0.14-0.20)</span>
                   <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-500"></span> ضعيفة (&lt;0.14)</span>
                 </>
               ) : satelliteMode === "NDVI" ? (
                 <>
-                  <span className="font-bold text-teal-400">مؤشر الخضرة (NDVI):</span>
+                  <span className="font-bold text-teal-400">الغطاء النباتي (NDVI):</span>
                   <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-500"></span> كثيفة (&gt;0.45)</span>
                   <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-lime-500"></span> متوسطة (0.32-0.45)</span>
                   <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-500"></span> خفيفة (0.22-0.32)</span>

@@ -1,8 +1,8 @@
 """
-Sentinel-2 Satellite Spectral Analysis Engine for Olive Orchards & Field Crops.
-Includes SAVI (Soil-Adjusted Vegetation Index) to eliminate bare soil background noise,
-SCL (Scene Classification Layer) band filtering to remove cloud shadows & cloud noise,
-and calibrated NDWI hydric stress thresholds for Mediterranean orchards.
+Sentinel-2 Precision Agriculture Spectral Engine.
+Includes Zero-Shift UTM Projection (WGS84 -> UTM Zone 29N/30N),
+Otsu's Bimodal Automatic Soil/Canopy Thresholding,
+Fractional Tree Canopy Coverage (f_Tree), and Calibrated Agricultural NDWI.
 """
 import os
 import base64
@@ -101,28 +101,158 @@ def point_in_polygon(x: float, y: float, poly_coords: List[List[float]]) -> bool
     return inside
 
 
+def wgs84_to_utm(lon: float, lat: float):
+    """
+    Mathematical transformation from WGS84 (lon, lat) to UTM Easting & Northing in meters.
+    Calculates exact spatial position for Sentinel-2 COG images (EPSG:32629 / 32630).
+    """
+    zone = int((lon + 180) / 6) + 1
+    lon0 = (zone - 1) * 6 - 180 + 3
+
+    a = 6378137.0
+    f = 1 / 298.257223563
+    k0 = 0.9996
+
+    phi = math.radians(lat)
+    lambda_val = math.radians(lon)
+    lambda0 = math.radians(lon0)
+
+    e2 = f * (2 - f)
+    e_prime2 = e2 / (1 - e2)
+
+    N = a / math.sqrt(1 - e2 * math.sin(phi)**2)
+    T = math.tan(phi)**2
+    C = e_prime2 * math.cos(phi)**2
+    A = (lambda_val - lambda0) * math.cos(phi)
+
+    M = a * ((1 - e2/4 - 3*e2**2/64 - 5*e2**3/256) * phi
+             - (3*e2/8 + 3*e2**2/32 + 45*e2**3/1024) * math.sin(2*phi)
+             + (15*e2**2/256 + 45*e2**3/1024) * math.sin(4*phi)
+             - (35*e2**3/3072) * math.sin(6*phi))
+
+    easting = 500000 + k0 * N * (A + (1 - T + C) * A**3 / 6 + (5 - 18*T + T**2 + 72*C - 58*e_prime2) * A**5 / 120)
+    northing = k0 * (M + N * math.tan(phi) * (A**2 / 2 + (5 - T + 9*C + 4*C**2) * A**4 / 24 + (61 - 58*T + T**2 + 600*C - 330*e_prime2) * A**6 / 720))
+    return easting, northing, zone
+
+
+def compute_otsu_threshold(savi_vals: np.ndarray) -> float:
+    """
+    Otsu's Bimodal Automatic Soil/Canopy Thresholding algorithm.
+    Finds the optimal threshold T* that dynamically separates soil background from tree canopy.
+    """
+    valid_vals = savi_vals[~np.isnan(savi_vals)]
+    if len(valid_vals) == 0:
+        return 0.18
+
+    s_min, s_max = float(np.min(valid_vals)), float(np.max(valid_vals))
+    if s_max <= s_min:
+        return 0.18
+
+    scaled = ((valid_vals - s_min) / (s_max - s_min + 1e-9) * 255.0).astype(np.uint8)
+    hist, _ = np.histogram(scaled, bins=256, range=(0, 256))
+    total = scaled.size
+
+    current_max = 0.0
+    threshold = 128
+
+    sum_total = float(np.dot(np.arange(256), hist))
+    sum_b = 0.0
+    w_b = 0.0
+
+    for i in range(256):
+        w_b += hist[i]
+        if w_b == 0:
+            continue
+        w_f = total - w_b
+        if w_f == 0:
+            break
+
+        sum_b += i * hist[i]
+        m_b = sum_b / w_b
+        m_f = (sum_total - sum_b) / w_f
+
+        var_between = w_b * w_f * ((m_b - m_f) ** 2)
+        if var_between > current_max:
+            current_max = var_between
+            threshold = i
+
+    otsu_savi = s_min + (threshold / 255.0) * (s_max - s_min)
+    return float(otsu_savi)
+
+
+def compute_fractional_canopy_cover(savi_grid: np.ndarray, otsu_threshold: float, poly_mask: np.ndarray):
+    """
+    Calculates Fractional Tree Canopy Coverage (f_Tree) per 10m pixel [0.0 to 1.0].
+    """
+    valid_savi = savi_grid[poly_mask]
+    if len(valid_savi) == 0:
+        return np.zeros_like(savi_grid), 0.12, 0.35
+
+    soil_pixels = valid_savi[valid_savi <= otsu_threshold]
+    tree_pixels = valid_savi[valid_savi > otsu_threshold]
+
+    savi_soil = float(np.mean(soil_pixels)) if len(soil_pixels) > 0 else float(np.min(valid_savi))
+    savi_tree_max = float(np.percentile(valid_savi, 95)) if len(valid_savi) > 0 else float(np.max(valid_savi))
+
+    if savi_tree_max <= savi_soil:
+        savi_tree_max = savi_soil + 0.15
+
+    f_tree = np.clip((savi_grid - savi_soil) / (savi_tree_max - savi_soil + 1e-9), 0.0, 1.0)
+    f_tree[~poly_mask] = 0.0
+    return f_tree, savi_soil, savi_tree_max
+
+
+def create_canopy_cover_heatmap(f_tree_grid: np.ndarray, poly_mask: np.ndarray, cloud_shadow_mask: np.ndarray = None) -> str:
+    """
+    Generate RGBA heatmap PNG base64 URL for Fractional Tree Canopy Cover (f_Tree %).
+    - f_Tree >= 0.35: Dense Tree Canopy (Emerald Green)
+    - f_Tree 0.18 - 0.35: Balanced Tree Canopy (Lime Green)
+    - f_Tree 0.08 - 0.18: Light/Young Tree Canopy (Yellow)
+    - f_Tree < 0.08: Bare Soil / Low Cover (Red)
+    """
+    h, w = f_tree_grid.shape
+    rgba = np.zeros((h, w, 4), dtype=np.uint8)
+
+    for i in range(h):
+        for j in range(w):
+            if not poly_mask[i, j] or (cloud_shadow_mask is not None and cloud_shadow_mask[i, j]):
+                rgba[i, j] = [0, 0, 0, 0]
+                continue
+            val = f_tree_grid[i, j]
+            if val >= 0.35:
+                rgba[i, j] = [16, 185, 129, 225]   # Emerald Green
+            elif val >= 0.18:
+                rgba[i, j] = [132, 204, 22, 215]   # Lime Green
+            elif val >= 0.08:
+                rgba[i, j] = [234, 179, 8, 210]    # Yellow
+            else:
+                rgba[i, j] = [239, 68, 68, 220]    # Red
+
+    img = Image.fromarray(rgba, mode="RGBA")
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    return f"data:image/png;base64,{base64.b64encode(buf.getvalue()).decode()}"
+
+
 def create_savi_heatmap(grid_savi: np.ndarray, poly_mask: np.ndarray, cloud_shadow_mask: np.ndarray = None) -> str:
-    """
-    Generate RGBA heatmap PNG base64 URL for SAVI.
-    Covers 100% of field polygon. Only outside pixels & cloud shadows are transparent.
-    """
+    """Generate RGBA heatmap PNG base64 URL for SAVI."""
     h, w = grid_savi.shape
     rgba = np.zeros((h, w, 4), dtype=np.uint8)
 
     for i in range(h):
         for j in range(w):
             if not poly_mask[i, j] or (cloud_shadow_mask is not None and cloud_shadow_mask[i, j]):
-                rgba[i, j] = [0, 0, 0, 0]          # Outside field or cloud shadow -> Transparent
+                rgba[i, j] = [0, 0, 0, 0]
                 continue
             val = grid_savi[i, j]
             if val >= 0.28:
-                rgba[i, j] = [16, 185, 129, 220]   # Emerald Green (Dense/Excellent)
+                rgba[i, j] = [16, 185, 129, 220]
             elif val >= 0.20:
-                rgba[i, j] = [132, 204, 22, 210]   # Lime Green (Good)
+                rgba[i, j] = [132, 204, 22, 210]
             elif val >= 0.14:
-                rgba[i, j] = [234, 179, 8, 210]    # Yellow (Moderate)
+                rgba[i, j] = [234, 179, 8, 210]
             else:
-                rgba[i, j] = [239, 68, 68, 225]    # Red (Low canopy / bare soil inside field)
+                rgba[i, j] = [239, 68, 68, 225]
 
     img = Image.fromarray(rgba, mode="RGBA")
     buf = io.BytesIO()
@@ -131,7 +261,7 @@ def create_savi_heatmap(grid_savi: np.ndarray, poly_mask: np.ndarray, cloud_shad
 
 
 def create_ndvi_heatmap(grid_ndvi: np.ndarray, poly_mask: np.ndarray, cloud_shadow_mask: np.ndarray = None) -> str:
-    """Generate RGBA heatmap PNG base64 URL for NDVI covering 100% of field polygon."""
+    """Generate RGBA heatmap PNG base64 URL for NDVI."""
     h, w = grid_ndvi.shape
     rgba = np.zeros((h, w, 4), dtype=np.uint8)
 
@@ -142,13 +272,13 @@ def create_ndvi_heatmap(grid_ndvi: np.ndarray, poly_mask: np.ndarray, cloud_shad
                 continue
             val = grid_ndvi[i, j]
             if val >= 0.45:
-                rgba[i, j] = [16, 185, 129, 220]   # Emerald
+                rgba[i, j] = [16, 185, 129, 220]
             elif val >= 0.32:
-                rgba[i, j] = [132, 204, 22, 210]   # Lime
+                rgba[i, j] = [132, 204, 22, 210]
             elif val >= 0.22:
-                rgba[i, j] = [234, 179, 8, 210]    # Yellow
+                rgba[i, j] = [234, 179, 8, 210]
             else:
-                rgba[i, j] = [239, 68, 68, 225]    # Red
+                rgba[i, j] = [239, 68, 68, 225]
 
     img = Image.fromarray(rgba, mode="RGBA")
     buf = io.BytesIO()
@@ -157,7 +287,7 @@ def create_ndvi_heatmap(grid_ndvi: np.ndarray, poly_mask: np.ndarray, cloud_shad
 
 
 def create_ndwi_heatmap(grid_ndwi: np.ndarray, poly_mask: np.ndarray, cloud_shadow_mask: np.ndarray = None) -> str:
-    """Generate RGBA heatmap PNG base64 URL for NDWI covering 100% of field polygon."""
+    """Generate RGBA heatmap PNG base64 URL for NDWI."""
     h, w = grid_ndwi.shape
     rgba = np.zeros((h, w, 4), dtype=np.uint8)
 
@@ -168,13 +298,13 @@ def create_ndwi_heatmap(grid_ndwi: np.ndarray, poly_mask: np.ndarray, cloud_shad
                 continue
             val = grid_ndwi[i, j]
             if val >= 0.02:
-                rgba[i, j] = [59, 130, 246, 210]   # Blue
+                rgba[i, j] = [59, 130, 246, 210]
             elif val >= -0.10:
-                rgba[i, j] = [6, 182, 212, 200]    # Cyan
+                rgba[i, j] = [6, 182, 212, 200]
             elif val >= -0.20:
-                rgba[i, j] = [245, 158, 11, 210]   # Amber
+                rgba[i, j] = [245, 158, 11, 210]
             else:
-                rgba[i, j] = [220, 38, 38, 230]    # Red
+                rgba[i, j] = [220, 38, 38, 230]
 
     img = Image.fromarray(rgba, mode="RGBA")
     buf = io.BytesIO()
@@ -213,47 +343,12 @@ async def query_sentinel2_stac(min_lng, min_lat, max_lng, max_lat):
     return None
 
 
-def wgs84_to_utm(lon: float, lat: float):
-    """
-    Mathematical transformation from WGS84 (lon, lat) to UTM Easting & Northing in meters.
-    Calculates exact spatial position for Sentinel-2 COG images (EPSG:32629 / 32630).
-    """
-    zone = int((lon + 180) / 6) + 1
-    lon0 = (zone - 1) * 6 - 180 + 3
-
-    a = 6378137.0
-    f = 1 / 298.257223563
-    k0 = 0.9996
-
-    phi = math.radians(lat)
-    lambda_val = math.radians(lon)
-    lambda0 = math.radians(lon0)
-
-    e2 = f * (2 - f)
-    e_prime2 = e2 / (1 - e2)
-
-    N = a / math.sqrt(1 - e2 * math.sin(phi)**2)
-    T = math.tan(phi)**2
-    C = e_prime2 * math.cos(phi)**2
-    A = (lambda_val - lambda0) * math.cos(phi)
-
-    M = a * ((1 - e2/4 - 3*e2**2/64 - 5*e2**3/256) * phi
-             - (3*e2/8 + 3*e2**2/32 + 45*e2**3/1024) * math.sin(2*phi)
-             + (15*e2**2/256 + 45*e2**3/1024) * math.sin(4*phi)
-             - (35*e2**3/3072) * math.sin(6*phi))
-
-    easting = 500000 + k0 * N * (A + (1 - T + C) * A**3 / 6 + (5 - 18*T + T**2 + 72*C - 58*e_prime2) * A**5 / 120)
-    northing = k0 * (M + N * math.tan(phi) * (A**2 / 2 + (5 - T + 9*C + 4*C**2) * A**4 / 24 + (61 - 58*T + T**2 + 600*C - 330*e_prime2) * A**6 / 720))
-    return easting, northing, zone
-
-
 def decode_band_crop(url: str, min_lng: float, min_lat: float, max_lng: float, max_lat: float, scene_bbox: list, client: httpx.Client):
     f = HttpSeekableFile(url, client)
     with tifffile.TiffFile(f) as tif:
         p0 = tif.pages[0]
         full_w, full_h = p0.shape[1], p0.shape[0]
 
-        # Extract GeoTIFF UTM tiepoints and pixel scale
         tie_x, tie_y = 0.0, 0.0
         scale_x, scale_y = 10.0, 10.0
         for tag in p0.tags.values():
@@ -262,7 +357,6 @@ def decode_band_crop(url: str, min_lng: float, min_lat: float, max_lng: float, m
             elif tag.name == 'ModelPixelScaleTag':
                 scale_x, scale_y = tag.value[0], tag.value[1]
 
-        # Calculate exact 10m image pixel indices via UTM projection (Zero-Shift)
         if tie_x > 0 and tie_y > 0:
             utm_min_x, utm_max_y, _ = wgs84_to_utm(min_lng, max_lat)
             utm_max_x, utm_min_y, _ = wgs84_to_utm(max_lng, min_lat)
@@ -272,7 +366,6 @@ def decode_band_crop(url: str, min_lng: float, min_lat: float, max_lng: float, m
             px_min_y = int((tie_y - utm_max_y) / scale_y)
             px_max_y = int((tie_y - utm_min_y) / scale_y)
         else:
-            # Fallback linear mapping
             s_min_lng, s_min_lat, s_max_lng, s_max_lat = scene_bbox
             px_min_x = int((min_lng - s_min_lng) / (s_max_lng - s_min_lng + 1e-9) * full_w)
             px_max_x = int((max_lng - s_min_lng) / (s_max_lng - s_min_lng + 1e-9) * full_w)
@@ -306,10 +399,6 @@ def decode_band_crop(url: str, min_lng: float, min_lat: float, max_lng: float, m
 
 
 def read_real_bands_tifffile(assets: dict, min_lng, min_lat, max_lng, max_lat, scene_bbox=None, grid_size=64):
-    """
-    Pure-Python GeoTIFF band reader using `tifffile` and `httpx` HTTP range requests.
-    Reads 10m Sentinel-2 B04 (Red), B08 (NIR), B11 (SWIR), and SCL (Scene Classification) bands.
-    """
     if not HAS_TIFFFILE:
         return None, None, None, None
 
@@ -353,7 +442,6 @@ def read_real_bands_tifffile(assets: dict, min_lng, min_lat, max_lng, max_lat, s
                 except Exception as e_scl:
                     print(f"SCL read notice: {e_scl}")
 
-            # Resize crops to target grid_size x grid_size
             grid_red = np.array(Image.fromarray(crop_red).resize((grid_size, grid_size), Image.Resampling.BILINEAR)) / 10000.0
             grid_nir = np.array(Image.fromarray(crop_nir).resize((grid_size, grid_size), Image.Resampling.BILINEAR)) / 10000.0
 
@@ -428,10 +516,10 @@ async def analyze_satellite(req: SatelliteAnalysisRequest):
     grid_ndvi = None
     grid_ndwi = None
     poly_mask = None
-    tree_mask = None
+    cloud_shadow_mask = None
     inside_count = 0
 
-    # 2. Try pure-Python tifffile HTTP range reader with SCL & SAVI
+    # 2. Try pure-Python tifffile HTTP range reader
     if stac_info and stac_info.get("assets") and HAS_TIFFFILE:
         grid_red, grid_nir, grid_swir, grid_scl = read_real_bands_tifffile(
             stac_info["assets"], min_lng, min_lat, max_lng, max_lat,
@@ -457,7 +545,6 @@ async def analyze_satellite(req: SatelliteAnalysisRequest):
             else:
                 grid_ndwi = grid_ndvi * 0.45 - 0.05
 
-            # Apply polygon boundary mask
             lons = np.linspace(min_lng, max_lng, grid_size)
             lats = np.linspace(max_lat, min_lat, grid_size)
             poly_mask = np.zeros((grid_size, grid_size), dtype=bool)
@@ -468,15 +555,9 @@ async def analyze_satellite(req: SatelliteAnalysisRequest):
                         poly_mask[i, j] = True
                         inside_count += 1
 
-            # Cloud & Cloud-Shadow Filtering via SCL
             cloud_shadow_mask = np.zeros((grid_size, grid_size), dtype=bool)
             if grid_scl is not None:
-                # SCL Classes to filter out: 3 (Cloud Shadow), 8 (Cloud Medium), 9 (Cloud High), 10 (Cirrus), 11 (Snow/Ice)
                 cloud_shadow_mask = np.isin(grid_scl, [3, 8, 9, 10, 11])
-
-            # Soil Background Masking & Tree Canopy Filter:
-            # Keep pixels inside polygon that are NOT cloud shadows AND have NDVI >= 0.18 (tree canopy cover)
-            tree_mask = poly_mask & (~cloud_shadow_mask) & (grid_ndvi >= 0.18)
 
             grid_savi = np.clip(grid_savi, -1.0, 1.0)
             grid_ndvi = np.clip(grid_ndvi, -1.0, 1.0)
@@ -488,29 +569,37 @@ async def analyze_satellite(req: SatelliteAnalysisRequest):
         grid_savi, grid_ndvi, grid_ndwi, poly_mask, inside_count = generate_clean_approximation(
             coords, min_lng, min_lat, max_lng, max_lat, grid_size
         )
-        tree_mask = poly_mask & (grid_ndvi >= 0.18)
+        cloud_shadow_mask = np.zeros((grid_size, grid_size), dtype=bool)
 
     if inside_count == 0:
         poly_mask[:, :] = True
-        tree_mask = poly_mask & (grid_ndvi >= 0.18)
 
-    # Fallback to poly_mask if tree_mask is empty
+    # 4. Otsu's Bimodal Automatic Soil/Canopy Thresholding Algorithm
+    valid_savi_vals = grid_savi[poly_mask & (~cloud_shadow_mask)]
+    otsu_threshold = compute_otsu_threshold(valid_savi_vals)
+
+    # 5. Calculate Fractional Tree Canopy Coverage (f_Tree)
+    f_tree_grid, savi_soil_mean, savi_tree_max = compute_fractional_canopy_cover(grid_savi, otsu_threshold, poly_mask)
+
+    # 6. Tree Canopy Mask (pixels where f_Tree > 0.05)
+    tree_mask = poly_mask & (~cloud_shadow_mask) & (f_tree_grid >= 0.05)
     valid_mask = tree_mask if np.any(tree_mask) else poly_mask
 
-    # 4. Compute statistics STRICTLY on tree canopy pixels (excluding soil & cloud noise)
+    # Calculate statistics
+    valid_f_tree = f_tree_grid[valid_mask]
     valid_savi = grid_savi[valid_mask]
     valid_ndvi = grid_ndvi[valid_mask]
     valid_ndwi = grid_ndwi[valid_mask]
 
+    mean_canopy_pct = float(np.mean(valid_f_tree)) * 100.0
     mean_savi = float(np.mean(valid_savi))
+    mean_ndvi = float(np.mean(valid_ndvi))
+    mean_ndwi = float(np.mean(valid_ndwi))
+
     min_savi_val = float(np.min(valid_savi))
     max_savi_val = float(np.max(valid_savi))
-
-    mean_ndvi = float(np.mean(valid_ndvi))
     min_ndvi_val = float(np.min(valid_ndvi))
     max_ndvi_val = float(np.max(valid_ndvi))
-
-    mean_ndwi = float(np.mean(valid_ndwi))
     min_ndwi_val = float(np.min(valid_ndwi))
     max_ndwi_val = float(np.max(valid_ndwi))
 
@@ -519,18 +608,19 @@ async def analyze_satellite(req: SatelliteAnalysisRequest):
     total_tree_pixels = max(1, len(valid_savi))
     hydric_stress_pct = round((stress_pixels / total_tree_pixels) * 100, 1)
 
-    # Generate Heatmaps covering 100% of field polygon (only cloud shadows & outside pixels are transparent)
-    savi_overlay = create_savi_heatmap(grid_savi, poly_mask, cloud_shadow_mask if 'cloud_shadow_mask' in locals() else None)
-    ndvi_overlay = create_ndvi_heatmap(grid_ndvi, poly_mask, cloud_shadow_mask if 'cloud_shadow_mask' in locals() else None)
-    ndwi_overlay = create_ndwi_heatmap(grid_ndwi, poly_mask, cloud_shadow_mask if 'cloud_shadow_mask' in locals() else None)
+    # Generate Heatmaps
+    canopy_overlay = create_canopy_cover_heatmap(f_tree_grid, poly_mask, cloud_shadow_mask)
+    savi_overlay = create_savi_heatmap(grid_savi, poly_mask, cloud_shadow_mask)
+    ndvi_overlay = create_ndvi_heatmap(grid_ndvi, poly_mask, cloud_shadow_mask)
+    ndwi_overlay = create_ndwi_heatmap(grid_ndwi, poly_mask, cloud_shadow_mask)
 
-    # Calibrated Agronomic Advice for Olive Orchards
+    # Calibrated Agronomic Advice
     if hydric_stress_pct > 25.0:
-        advice_ar = f"⚠️ تم كشف إجهاد مائي جزئي بنسبة {hydric_stress_pct}% في غطاء الأشجار. يُنصح بزيادة الري بمقدار 20 دقيقة للقطاعات المتأثرة."
+        advice_ar = f"⚠️ تم كشف إجهاد مائي جزئي بنسبة {hydric_stress_pct}% في غطاء أشجار {req.cropType} (كثافة العرش: {mean_canopy_pct:.1f}%). يُنصح بزيادة الري بمقدار 20 دقيقة للقطاعات المتأثرة."
     elif hydric_stress_pct > 10.0:
-        advice_ar = f"💡 حالة ري متوازنة مع إجهاد خفيف جداً ({hydric_stress_pct}%). غطاء أشجار {req.cropType} في صحة ممتازة (SAVI: {mean_savi:.2f})."
+        advice_ar = f"💡 حالة ري متوازنة مع إجهاد خفيف جداً ({hydric_stress_pct}%). غطاء أشجار {req.cropType} ممتاز (كثافة العرش: {mean_canopy_pct:.1f}%, SAVI: {mean_savi:.2f})."
     else:
-        advice_ar = f"✅ أشجار {req.cropType} في حالة صحة ورطوبة ممتازة (SAVI: {mean_savi:.2f}, NDVI: {mean_ndvi:.2f}). جدول الري متوازن تماماً."
+        advice_ar = f"✅ أشجار {req.cropType} في حالة صحة ورطوبة ممتازة (كثافة العرش: {mean_canopy_pct:.1f}%, SAVI: {mean_savi:.2f}). جدول الري متوازن تماماً."
 
     scene_id = stac_info.get("id", "N/A") if stac_info else "N/A"
     scene_date = stac_info.get("date", "N/A") if stac_info else "N/A"
@@ -544,6 +634,11 @@ async def analyze_satellite(req: SatelliteAnalysisRequest):
         "cloudCover": cloud_cover,
         "lastPassDate": scene_date,
         "bounds": [[min_lat, min_lng], [max_lat, max_lng]],
+        "canopyCover": {
+            "meanPct": round(mean_canopy_pct, 1),
+            "otsuThreshold": round(otsu_threshold, 3),
+            "overlayDataUrl": canopy_overlay,
+        },
         "savi": {
             "mean": round(mean_savi, 3),
             "min": round(min_savi_val, 3),
