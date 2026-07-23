@@ -567,7 +567,7 @@ export function FieldWorkspace({
                   <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-500"></span> كثيفة عالية (&ge;35%)</span>
                   <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-lime-500"></span> متوازنة (18%-35%)</span>
                   <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-500"></span> خفيفة/فتية (8%-18%)</span>
-                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-500"></span> تربة/منخفضة (&lt;8%)</span>
+                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-slate-400"></span> تربة/أرض محصودة (0%)</span>
                 </>
               ) : satelliteMode === "SAVI" ? (
                 <>
