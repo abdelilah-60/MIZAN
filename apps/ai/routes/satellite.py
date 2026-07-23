@@ -180,12 +180,25 @@ def compute_otsu_threshold(savi_vals: np.ndarray) -> float:
     return float(otsu_savi)
 
 
+def erode_mask(mask: np.ndarray, iterations: int = 2) -> np.ndarray:
+    """Erode binary polygon mask by N pixel rings to strip outside border overlaps."""
+    eroded = mask.copy()
+    for _ in range(iterations):
+        temp = eroded.copy()
+        temp[1:, :] &= eroded[:-1, :]
+        temp[:-1, :] &= eroded[1:, :]
+        temp[:, 1:] &= eroded[:, :-1]
+        temp[:, :-1] &= eroded[:, 1:]
+        eroded = temp
+    return eroded if np.any(eroded) else mask
+
+
 def apply_spectral_decision_tree(grid_savi: np.ndarray, grid_ndti: np.ndarray, grid_ndre: np.ndarray, poly_mask: np.ndarray):
     """
     Spectral Decision Tree Architecture:
     1. NDTI Masking for Dry Straw/Crop Residue: (NDTI > 0.08 & NDRE < 0.10) or (SAVI < 0.15 & NDRE < 0.08)
        -> Classified as Crop Residue / Bare Soil (f_Tree = 0.0%)
-    2. Living Tree Canopy: SAVI >= 0.15 AND NDRE >= 0.08
+    2. Living Tree Canopy: SAVI >= 0.15 AND NDRE >= 0.08 (Active Chlorophyll Red Edge)
        -> Unmixed & scaled to f_Tree >= 0.35 (35% - 100%)
     """
     h, w = grid_savi.shape
@@ -211,7 +224,7 @@ def apply_spectral_decision_tree(grid_savi: np.ndarray, grid_ndti: np.ndarray, g
             # Rule 1: Crop Residue / Harvested Wheat Straw (High NDTI, Low NDRE)
             if (ndti_val > 0.08 and ndre_val < 0.10) or (savi_val < 0.15 and ndre_val < 0.08):
                 f_tree_grid[i, j] = 0.0
-            # Rule 2: Living Tree Canopy (Active Chlorophyll Red Edge)
+            # Rule 2: Living Tree Canopy (Active Chlorophyll Red Edge: NDRE >= 0.08 and SAVI >= 0.15)
             elif savi_val >= 0.15 and ndre_val >= 0.08:
                 ratio = np.clip((savi_val - savi_floor) / (savi_max - savi_floor + 1e-9), 0.0, 1.0)
                 f_tree_grid[i, j] = float(np.clip(0.35 + 0.65 * ratio, 0.35, 1.0))
@@ -655,8 +668,11 @@ async def analyze_satellite(req: SatelliteAnalysisRequest):
     # 4. Apply Spectral Decision Tree Architecture (NDTI Straw Masking + NDRE Living Chlorophyll)
     f_tree_grid = apply_spectral_decision_tree(grid_savi, grid_ndti, grid_ndre, poly_mask & (~cloud_shadow_mask))
 
-    # Calculate statistics on valid field mask
-    valid_poly_pixels = poly_mask & (~cloud_shadow_mask)
+    # Calculate statistics on inner eroded field mask (stripping outside border overlaps)
+    raw_poly_pixels = poly_mask & (~cloud_shadow_mask)
+    eroded_poly_pixels = erode_mask(poly_mask, iterations=2) & (~cloud_shadow_mask)
+    
+    valid_poly_pixels = eroded_poly_pixels if np.any(eroded_poly_pixels) else raw_poly_pixels
     if not np.any(valid_poly_pixels):
         valid_poly_pixels = poly_mask
 
@@ -694,8 +710,12 @@ async def analyze_satellite(req: SatelliteAnalysisRequest):
 
     # Calibrated Agronomic Advice
     is_wheat_or_annual = any(w in crop_type.lower() for w in ["wheat", "barley", "قمح", "شعير", "حبوب", "محصول"])
-    if is_wheat_or_annual and mean_canopy_pct < 10.0:
-        advice_ar = f"🌾 حقل {crop_type} محصود/تربة جرداء مغطاة ببقايا التبن والقش الجاف (كثافة الأشجار: 0%). حالة الأرض طبيعية لفترة الصيف وتجهيز الموسم الجديد."
+    is_bare_or_fallow = any(w in crop_type.lower() for w in ["bare", "fallow", "بور", "فارغ", "فارغة"])
+
+    if is_bare_or_fallow or mean_canopy_pct < 5.0:
+        advice_ar = f"🏜️ أرض فارغة / بور بدون غطاء أشجار (كثافة الأشجار: {mean_canopy_pct:.1f}%). لا توجد أشجار زيتون حية في هذا الحقل حالياً."
+    elif is_wheat_or_annual and mean_canopy_pct < 15.0:
+        advice_ar = f"🌾 حقل {crop_type} محصود/تربة جرداء مغطاة ببقايا التبن والقش الجاف (كثافة الأشجار: 0.0%). حالة الأرض طبيعية لفترة الصيف وتجهيز الموسم الجديد."
     elif hydric_stress_pct > 25.0:
         advice_ar = f"⚠️ تم كشف إجهاد مائي جزئي بنسبة {hydric_stress_pct}% في غطاء أشجار {crop_type} (كثافة العرش: {mean_canopy_pct:.1f}%). يُنصح بزيادة الري بمقدار 20 دقيقة للقطاعات المتأثرة."
     elif hydric_stress_pct > 10.0:
