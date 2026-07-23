@@ -489,17 +489,17 @@ export function FieldWorkspace({
             </div>
             {/* Data Source Badge */}
             {satelliteData && (
-              <div className={`bg-slate-950/80 backdrop-blur-md border px-2 py-1 rounded-full text-[8px] font-bold flex items-center gap-1.5 shadow-lg ${
+              <div className={`bg-slate-950/80 backdrop-blur-md border px-2.5 py-1.5 rounded-xl text-[9px] font-bold flex items-center gap-2 shadow-lg ${
                 satelliteData.dataSource === "sentinel-2-real"
                   ? "border-emerald-500/30 text-emerald-400"
                   : "border-amber-500/30 text-amber-400"
               }`}>
-                <span className={`w-1.5 h-1.5 rounded-full animate-pulse ${
+                <span className={`w-2 h-2 rounded-full animate-pulse ${
                   satelliteData.dataSource === "sentinel-2-real" ? "bg-emerald-400" : "bg-amber-400"
                 }`} />
                 <span>{satelliteData.dataSource === "sentinel-2-real" ? "بيانات حقيقية ✓" : "تقريبي (Demo)"}</span>
                 {satelliteData.lastPassDate && satelliteData.lastPassDate !== "N/A" && (
-                  <span className="text-slate-400 font-mono">{satelliteData.lastPassDate}</span>
+                  <span className="text-white/70 font-mono text-[9px]">📅 {satelliteData.lastPassDate}</span>
                 )}
               </div>
             )}
@@ -526,7 +526,6 @@ export function FieldWorkspace({
                   <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-lime-500"></span> جيدة (0.55-0.7)</span>
                   <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-500"></span> متوسطة (0.4-0.55)</span>
                   <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-500"></span> ضعيفة (&lt;0.4)</span>
-                  <span className="flex items-center gap-1 border-r border-white/15 pr-2 mr-1"><span className="w-2 h-2 rounded-full border border-slate-400 bg-transparent"></span> 🏠 مباني/تربة (مستثناة)</span>
                 </>
               ) : (
                 <>
@@ -535,7 +534,6 @@ export function FieldWorkspace({
                   <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-cyan-500"></span> رطوبة متوازنة</span>
                   <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-500"></span> جفاف خفيف</span>
                   <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-600"></span> إجهاد مائي حاد ⚠️</span>
-                  <span className="flex items-center gap-1 border-r border-white/15 pr-2 mr-1"><span className="w-2 h-2 rounded-full border border-slate-400 bg-transparent"></span> 🏠 مباني/تربة (مستثناة)</span>
                 </>
               )}
             </div>
@@ -606,9 +604,16 @@ export function FieldWorkspace({
             <div className="mt-3 p-3 bg-slate-950/60 border border-emerald-500/20 rounded-2xl flex items-start gap-2.5 shadow-md">
               <span className="text-lg">📡</span>
               <div className="flex flex-col">
-                <span className="text-[9px] font-bold text-emerald-400 uppercase tracking-wider">
-                  تحليل الأقمار الصناعية (Sentinel-2A • 10m)
-                </span>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-[9px] font-bold text-emerald-400 uppercase tracking-wider">
+                    تحليل الأقمار الصناعية (Sentinel-2A • 10m)
+                  </span>
+                  {satelliteData.lastPassDate && satelliteData.lastPassDate !== "N/A" && (
+                    <span className="text-[9px] font-mono text-sky-400 bg-sky-500/10 border border-sky-500/20 px-1.5 py-0.5 rounded-md">
+                      📅 تاريخ التصوير: {satelliteData.lastPassDate}
+                    </span>
+                  )}
+                </div>
                 <p className="text-[11px] text-slate-200 font-medium leading-relaxed mt-0.5">
                   {satelliteData.agronomicAdvice}
                 </p>
