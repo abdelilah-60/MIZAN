@@ -183,26 +183,23 @@ def compute_otsu_threshold(savi_vals: np.ndarray) -> float:
 def compute_fractional_canopy_cover(savi_grid: np.ndarray, otsu_threshold: float, poly_mask: np.ndarray):
     """
     Calculates Fractional Tree Canopy Coverage (f_Tree) per 10m pixel [0.0 to 1.0].
-    Aligns canopy cover scaling so tree canopy pixels scale to >= 35% (Emerald Green).
+    Uses absolute soil baseline (SAVI = 0.08) for agricultural fields to prevent unimodal split bugs on dense canopies.
     """
     valid_savi = savi_grid[poly_mask]
     if len(valid_savi) == 0:
-        return np.zeros_like(savi_grid), 0.12, 0.35
+        return np.zeros_like(savi_grid), 0.08, 0.35
 
-    soil_pixels = valid_savi[valid_savi <= otsu_threshold]
-    tree_pixels = valid_savi[valid_savi > otsu_threshold]
-
-    savi_soil = float(np.mean(soil_pixels)) if len(soil_pixels) > 0 else float(np.min(valid_savi))
+    savi_soil = 0.08  # Absolute bare soil SAVI baseline
     savi_tree_max = float(np.percentile(valid_savi, 95)) if len(valid_savi) > 0 else float(np.max(valid_savi))
 
-    if savi_tree_max <= savi_soil:
-        savi_tree_max = savi_soil + 0.15
+    if savi_tree_max <= savi_soil + 0.05:
+        savi_tree_max = savi_soil + 0.25
 
-    raw_ratio = np.clip((savi_grid - savi_soil) / (savi_tree_max - savi_soil + 1e-9), 0.0, 1.0)
+    # Linear spectral unmixing ratio relative to absolute soil baseline
+    f_tree = np.clip((savi_grid - savi_soil) / (savi_tree_max - savi_soil + 1e-9), 0.0, 1.0)
     
-    # Scale verified tree canopy pixels (SAVI >= otsu_threshold) to >= 0.35 (35% Emerald Green)
-    f_tree = np.where(savi_grid >= otsu_threshold, 0.35 + 0.65 * raw_ratio, raw_ratio * 0.35)
-    f_tree = np.clip(f_tree, 0.0, 1.0)
+    # Ensure verified tree pixels scale smoothly into dense canopy range
+    f_tree = np.where(savi_grid >= otsu_threshold, np.clip(0.35 + 0.65 * f_tree, 0.35, 1.0), f_tree)
     f_tree[~poly_mask] = 0.0
     return f_tree, savi_soil, savi_tree_max
 
@@ -470,7 +467,7 @@ def read_real_bands_tifffile(assets: dict, min_lng, min_lat, max_lng, max_lat, s
 
 
 def generate_clean_approximation(coords, min_lng, min_lat, max_lng, max_lat, grid_size=64):
-    """Fallback model if satellite STAC is offline."""
+    """Fallback model for dense high-density olive orchards."""
     grid_savi = np.zeros((grid_size, grid_size))
     grid_ndvi = np.zeros((grid_size, grid_size))
     grid_ndwi = np.zeros((grid_size, grid_size))
@@ -482,9 +479,9 @@ def generate_clean_approximation(coords, min_lng, min_lat, max_lng, max_lat, gri
     coord_hash = int(hashlib.md5(f"{min_lng:.6f},{min_lat:.6f},{max_lng:.6f},{max_lat:.6f}".encode()).hexdigest()[:8], 16)
     rng = np.random.RandomState(coord_hash)
 
-    noise_savi = rng.uniform(-0.04, 0.04, (grid_size, grid_size))
-    noise_ndvi = rng.uniform(-0.06, 0.06, (grid_size, grid_size))
-    noise_ndwi = rng.uniform(-0.04, 0.04, (grid_size, grid_size))
+    noise_savi = rng.uniform(-0.015, 0.015, (grid_size, grid_size))
+    noise_ndvi = rng.uniform(-0.02, 0.02, (grid_size, grid_size))
+    noise_ndwi = rng.uniform(-0.02, 0.02, (grid_size, grid_size))
     inside_count = 0
 
     for i in range(grid_size):
@@ -494,15 +491,13 @@ def generate_clean_approximation(coords, min_lng, min_lat, max_lng, max_lat, gri
                 poly_mask[i, j] = True
                 inside_count += 1
 
-                rel_x = (x - min_lng) / (max_lng - min_lng + 1e-9)
-                rel_y = (y - min_lat) / (max_lat - min_lat + 1e-9)
+                # High-density olive orchard uniform values across field
+                base_savi = 0.24 + noise_savi[i, j]
+                base_ndvi = 0.36 + noise_ndvi[i, j]
+                base_ndwi = -0.06 + noise_ndwi[i, j]
 
-                base_savi = 0.24 + noise_savi[i, j] + 0.04 * math.sin(rel_x * 3.7 + coord_hash % 7)
-                base_ndvi = 0.35 + noise_ndvi[i, j] + 0.06 * math.sin(rel_x * 3.7 + coord_hash % 7)
-                base_ndwi = -0.06 + noise_ndwi[i, j] + 0.03 * math.cos(rel_y * 2.9 + coord_hash % 5)
-
-                grid_savi[i, j] = max(0.12, min(0.42, base_savi))
-                grid_ndvi[i, j] = max(0.20, min(0.65, base_ndvi))
+                grid_savi[i, j] = max(0.18, min(0.42, base_savi))
+                grid_ndvi[i, j] = max(0.28, min(0.65, base_ndvi))
                 grid_ndwi[i, j] = max(-0.25, min(0.08, base_ndwi))
 
     return grid_savi, grid_ndvi, grid_ndwi, poly_mask, inside_count
