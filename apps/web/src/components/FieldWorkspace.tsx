@@ -746,6 +746,11 @@ export function FieldWorkspace({
                       📅 تصوير: {satelliteData.lastPassDate}
                     </span>
                   )}
+                  {satelliteData.phenologyProfile && (
+                    <span className="text-[9px] font-mono text-emerald-300 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-lg font-bold">
+                      📈 90d: {satelliteData.phenologyProfile.landCoverClassAr} ({satelliteData.phenologyProfile.deltaNdvi} ΔNDVI)
+                    </span>
+                  )}
                 </div>
                 <p className="text-xs text-slate-200 font-medium leading-relaxed">
                   {satelliteData.agronomicAdvice}
