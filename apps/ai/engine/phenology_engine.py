@@ -66,17 +66,25 @@ def analyze_phenology_profile(time_series_data: List[Dict[str, Any]]) -> Dict[st
     }
 
 
-def generate_synthetic_phenology_series(coords: List[List[float]], crop_type: Optional[str] = "Olive") -> List[Dict[str, Any]]:
+def generate_synthetic_phenology_series(
+    coords: List[List[float]],
+    crop_type: Optional[str] = "Olive",
+    mean_savi: float = 0.25,
+    mean_ndre: float = 0.10
+) -> List[Dict[str, Any]]:
     """
-    Generates repeatable 90-day time-series data using MD5 hashing over coordinates
-    to support fallback mode when STAC historical scenes are cached or offline.
+    Generates 90-day time-series data aware of physical satellite observations
+    (BSI and NDRE override database text strings if field is physically bare).
     """
     coord_str = f"{coords[0][0]:.5f},{coords[0][1]:.5f}" if coords else "0,0"
     coord_hash = int(hashlib.md5(coord_str.encode()).hexdigest()[:8], 16)
     rng = np.random.RandomState(coord_hash)
 
-    is_bare = any(w in (crop_type or "").lower() for w in ["bare", "fallow", "بور", "فارغ", "فارغة"])
-    is_wheat = any(w in (crop_type or "").lower() for w in ["wheat", "barley", "قمح", "شعير", "حبوب", "محصول"])
+    is_explicit_bare = any(w in (crop_type or "").lower() for w in ["bare", "fallow", "بور", "فارغ", "فارغة"])
+    is_physical_bare = (mean_savi < 0.16 and mean_ndre < 0.045)
+    is_bare = is_explicit_bare or is_physical_bare
+
+    is_wheat = any(w in (crop_type or "").lower() for w in ["wheat", "barley", "قمح", "شعير", "حبوب", "محصول"]) and not is_bare
 
     today = datetime.now()
     series = []

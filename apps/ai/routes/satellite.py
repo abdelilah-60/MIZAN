@@ -218,12 +218,16 @@ def apply_spectral_decision_tree(grid_savi: np.ndarray, grid_ndvi: np.ndarray, g
 
     mean_savi = float(np.mean(valid_savi))
     mean_ndvi = float(np.mean(valid_ndvi))
+    mean_ndre = float(np.mean(valid_ndre))
 
-    # 2. Protective Bare Shield (Prevent zeroing if field shows active vegetation)
-    is_high_vegetation = (mean_ndvi > 0.22) or (mean_savi > 0.14)
+    # Physical Bare Soil Override (BSI and Low NDRE Override DB cropType string if physically bare)
+    is_physical_bare = (mean_ndre < 0.035) or (float(np.percentile(valid_savi, 90)) < 0.16 and mean_ndre < 0.045)
+
+    # Protective Bare Shield (Active vegetation requires genuine Red Edge chlorophyll jump)
+    is_high_vegetation = ((mean_ndvi > 0.25) or (mean_savi > 0.18)) and (mean_ndre >= 0.04)
 
     is_explicit_bare = (profile["group_id"] == "GROUP_4_ANNUAL_VEGETABLES_BARE") and any(w in crop_type.lower() for w in ["bare", "fallow", "بور", "فارغ", "فارغة"])
-    is_auto_bare = (float(np.percentile(valid_savi, 90)) <= profile["bsi_bare_cutoff"]) and (mean_ndvi <= 0.12)
+    is_auto_bare = is_physical_bare or ((float(np.percentile(valid_savi, 90)) <= profile["bsi_bare_cutoff"]) and (mean_ndvi <= 0.12))
     is_bare_land = (is_explicit_bare or is_auto_bare) and (not is_high_vegetation)
 
     if is_bare_land:
@@ -799,6 +803,6 @@ async def analyze_satellite(req: SatelliteAnalysisRequest):
             "stressStatus": "HIGH_STRESS" if hydric_stress_pct > 25 else ("MODERATE_STRESS" if hydric_stress_pct > 10 else "OPTIMAL"),
             "overlayDataUrl": ndwi_overlay,
         },
-        "phenologyProfile": analyze_phenology_profile(generate_synthetic_phenology_series(coords, crop_type)),
+        "phenologyProfile": analyze_phenology_profile(generate_synthetic_phenology_series(coords, crop_type, mean_savi, mean_ndre)),
         "agronomicAdvice": advice_ar
     }
