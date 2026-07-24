@@ -193,13 +193,13 @@ def erode_mask(mask: np.ndarray, iterations: int = 2) -> np.ndarray:
     return eroded if np.any(eroded) else mask
 
 
-def apply_spectral_decision_tree(grid_savi: np.ndarray, grid_ndti: np.ndarray, grid_ndre: np.ndarray, poly_mask: np.ndarray, crop_type: str = "Olive"):
+def apply_spectral_decision_tree(grid_savi: np.ndarray, grid_ndvi: np.ndarray, grid_ndti: np.ndarray, grid_ndre: np.ndarray, poly_mask: np.ndarray, crop_type: str = "Olive"):
     """
-    Adaptive Spectral Unmixing Engine v3.0:
-    1. Local Soil Line Auto-Calibration (Dynamic SAVI baseline per field).
-    2. Auto Land Cover Classifier (Detects bare soil automatically if SAVI 90th percentile < 0.16 and mean NDRE < 0.05).
-    3. Dual Check (NDTI Straw Cellulose + NDRE Red Edge Chlorophyll Jump).
-    4. Continuous Linear Spectral Unmixing (0.0% to 100.0% smooth gradient - no forced 35% jump).
+    Adaptive Spectral Unmixing Engine v4.0 (Absolute Soil Anchor & Protective Bare Shield):
+    1. Protective Bare Shield: Prevents zeroing if field shows mean NDVI > 0.22 or mean SAVI > 0.14.
+    2. Absolute Soil Baseline Anchor: savi_soil = min(percentile(valid_savi, 15), 0.08) - prevents tree shadows from inflating soil baseline.
+    3. Adaptive Tree Thresholding: Tree threshold set dynamically (0.11 for dense orchards, savi_soil + 0.03 for sparse).
+    4. Continuous Spectral Unmixing: Smooth gradient from 0.0% to 100.0%.
     """
     h, w = grid_savi.shape
     f_tree_grid = np.zeros((h, w), dtype=np.float32)
@@ -209,22 +209,35 @@ def apply_spectral_decision_tree(grid_savi: np.ndarray, grid_ndti: np.ndarray, g
         return f_tree_grid
 
     valid_savi = grid_savi[valid_mask]
+    valid_ndvi = grid_ndvi[valid_mask] if grid_ndvi is not None else valid_savi
     valid_ndre = grid_ndre[valid_mask] if grid_ndre is not None else np.zeros_like(valid_savi)
 
-    # 1. Dynamic Soil Line & Endmember Calibration
-    savi_soil = float(np.clip(np.percentile(valid_savi, 15), 0.08, 0.20))
-    savi_canopy = float(np.clip(np.percentile(valid_savi, 95), 0.28, 0.55))
-    savi_threshold = savi_soil + 0.04
+    mean_savi = float(np.mean(valid_savi))
+    mean_ndvi = float(np.mean(valid_ndvi))
 
-    # 2. Auto Land Cover Classifier (Detect bare soil automatically even if crop_type isn't specified)
+    # 1. Protective Bare Shield (Prevent zeroing if field shows active vegetation)
+    is_high_vegetation = (mean_ndvi > 0.22) or (mean_savi > 0.14)
+
     is_explicit_bare = any(w in crop_type.lower() for w in ["bare", "fallow", "بور", "فارغ", "فارغة"])
-    is_auto_bare = (float(np.percentile(valid_savi, 90)) < 0.16) and (float(np.mean(valid_ndre)) < 0.05)
-    is_bare_land = is_explicit_bare or is_auto_bare
+    is_auto_bare = (float(np.percentile(valid_savi, 90)) <= 0.10) and (mean_ndvi <= 0.12)
+    is_bare_land = (is_explicit_bare or is_auto_bare) and (not is_high_vegetation)
 
     if is_bare_land:
         return f_tree_grid
 
-    # 3. Continuous Spectral Unmixing
+    # 2. Absolute Soil Baseline Anchor (Capped at 0.08 max for soil)
+    savi_soil = float(min(np.percentile(valid_savi, 15), 0.08))
+    savi_max = float(np.percentile(valid_savi, 95)) if len(valid_savi) > 0 else 0.35
+
+    # 3. Adaptive Tree Thresholding
+    if mean_savi > 0.14:
+        tree_threshold = 0.11
+    elif savi_soil <= 0.08:
+        tree_threshold = savi_soil + 0.03
+    else:
+        tree_threshold = 0.11
+
+    # 4. Continuous Spectral Unmixing
     for i in range(h):
         for j in range(w):
             if not poly_mask[i, j]:
@@ -234,12 +247,13 @@ def apply_spectral_decision_tree(grid_savi: np.ndarray, grid_ndti: np.ndarray, g
             ndti_val = grid_ndti[i, j]
             ndre_val = grid_ndre[i, j]
 
-            # Rule 1: Crop Residue / Harvested Straw or Bare Soil (High NDTI, Low NDRE, or Low SAVI)
-            if (ndti_val > 0.05 and ndre_val < 0.045) or (savi_val < savi_threshold) or (ndre_val < 0.035):
+            # Rule 1: Crop Residue / Harvested Straw
+            if (ndti_val > 0.05 and ndre_val < 0.045):
+                f_tree_grid[i, j] = 0.0
+            elif (savi_val < tree_threshold):
                 f_tree_grid[i, j] = 0.0
             else:
-                # Continuous smooth unmixing from 0.0 to 1.0 (0% to 100%)
-                ratio = (savi_val - savi_threshold) / (savi_canopy - savi_threshold + 1e-9)
+                ratio = (savi_val - tree_threshold) / (savi_max - tree_threshold + 1e-9)
                 f_tree_grid[i, j] = float(np.clip(ratio, 0.0, 1.0))
 
     return f_tree_grid
@@ -685,7 +699,7 @@ async def analyze_satellite(req: SatelliteAnalysisRequest):
         poly_mask[:, :] = True
 
     # 4. Apply Spectral Decision Tree Architecture (NDTI Straw Masking + NDRE Living Chlorophyll)
-    f_tree_grid = apply_spectral_decision_tree(grid_savi, grid_ndti, grid_ndre, poly_mask & (~cloud_shadow_mask), crop_type)
+    f_tree_grid = apply_spectral_decision_tree(grid_savi, grid_ndvi, grid_ndti, grid_ndre, poly_mask & (~cloud_shadow_mask), crop_type)
 
     # Calculate statistics on inner eroded field mask (stripping outside border overlaps)
     raw_poly_pixels = poly_mask & (~cloud_shadow_mask)
