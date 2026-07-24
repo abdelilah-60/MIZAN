@@ -195,12 +195,11 @@ def erode_mask(mask: np.ndarray, iterations: int = 2) -> np.ndarray:
 
 def apply_spectral_decision_tree(grid_savi: np.ndarray, grid_ndti: np.ndarray, grid_ndre: np.ndarray, poly_mask: np.ndarray, crop_type: str = "Olive"):
     """
-    Crop-Calibrated Spectral Decision Tree Architecture:
-    1. Crop Residue / Harvested Wheat Straw: (NDTI > 0.08 & NDRE < 0.04) or (SAVI < 0.11 & NDRE < 0.03)
-       -> Classified as Crop Residue / Bare Soil (f_Tree = 0.0%)
-    2. Living Tree Canopy (Olive / Orchards):
-       - For Olive / Picholine / Arbequina: SAVI >= 0.11 AND NDRE >= 0.035 (Calibrated for olive leaf optics)
-       -> Unmixed & scaled to f_Tree >= 0.35 (35% - 100% Emerald Green)
+    Adaptive Spectral Unmixing Engine v3.0:
+    1. Local Soil Line Auto-Calibration (Dynamic SAVI baseline per field).
+    2. Auto Land Cover Classifier (Detects bare soil automatically if SAVI 90th percentile < 0.16 and mean NDRE < 0.05).
+    3. Dual Check (NDTI Straw Cellulose + NDRE Red Edge Chlorophyll Jump).
+    4. Continuous Linear Spectral Unmixing (0.0% to 100.0% smooth gradient - no forced 35% jump).
     """
     h, w = grid_savi.shape
     f_tree_grid = np.zeros((h, w), dtype=np.float32)
@@ -210,11 +209,22 @@ def apply_spectral_decision_tree(grid_savi: np.ndarray, grid_ndti: np.ndarray, g
         return f_tree_grid
 
     valid_savi = grid_savi[valid_mask]
-    savi_max = float(np.percentile(valid_savi, 95)) if len(valid_savi) > 0 else 0.35
-    savi_floor = 0.11
+    valid_ndre = grid_ndre[valid_mask] if grid_ndre is not None else np.zeros_like(valid_savi)
 
-    is_bare_or_fallow = any(w in crop_type.lower() for w in ["bare", "fallow", "بور", "فارغ", "فارغة"])
+    # 1. Dynamic Soil Line & Endmember Calibration
+    savi_soil = float(np.clip(np.percentile(valid_savi, 15), 0.08, 0.20))
+    savi_canopy = float(np.clip(np.percentile(valid_savi, 95), 0.28, 0.55))
+    savi_threshold = savi_soil + 0.04
 
+    # 2. Auto Land Cover Classifier (Detect bare soil automatically even if crop_type isn't specified)
+    is_explicit_bare = any(w in crop_type.lower() for w in ["bare", "fallow", "بور", "فارغ", "فارغة"])
+    is_auto_bare = (float(np.percentile(valid_savi, 90)) < 0.16) and (float(np.mean(valid_ndre)) < 0.05)
+    is_bare_land = is_explicit_bare or is_auto_bare
+
+    if is_bare_land:
+        return f_tree_grid
+
+    # 3. Continuous Spectral Unmixing
     for i in range(h):
         for j in range(w):
             if not poly_mask[i, j]:
@@ -224,17 +234,13 @@ def apply_spectral_decision_tree(grid_savi: np.ndarray, grid_ndti: np.ndarray, g
             ndti_val = grid_ndti[i, j]
             ndre_val = grid_ndre[i, j]
 
-            if is_bare_or_fallow:
+            # Rule 1: Crop Residue / Harvested Straw or Bare Soil (High NDTI, Low NDRE, or Low SAVI)
+            if (ndti_val > 0.05 and ndre_val < 0.045) or (savi_val < savi_threshold) or (ndre_val < 0.035):
                 f_tree_grid[i, j] = 0.0
-            # Rule 1: Crop Residue / Harvested Wheat Straw (High NDTI, Low NDRE)
-            elif (ndti_val > 0.08 and ndre_val < 0.04) or (savi_val < 0.11 and ndre_val < 0.03):
-                f_tree_grid[i, j] = 0.0
-            # Rule 2: Living Tree Canopy (Olive Leaf Optics: SAVI >= 0.11 and NDRE >= 0.035)
-            elif savi_val >= 0.11 and ndre_val >= 0.035:
-                ratio = np.clip((savi_val - savi_floor) / (savi_max - savi_floor + 1e-9), 0.0, 1.0)
-                f_tree_grid[i, j] = float(np.clip(0.35 + 0.65 * ratio, 0.35, 1.0))
             else:
-                f_tree_grid[i, j] = 0.0
+                # Continuous smooth unmixing from 0.0 to 1.0 (0% to 100%)
+                ratio = (savi_val - savi_threshold) / (savi_canopy - savi_threshold + 1e-9)
+                f_tree_grid[i, j] = float(np.clip(ratio, 0.0, 1.0))
 
     return f_tree_grid
 
@@ -548,6 +554,7 @@ def generate_clean_approximation(coords, crop_type, min_lng, min_lat, max_lng, m
     rng = np.random.RandomState(coord_hash)
 
     is_wheat_or_annual = any(w in crop_type.lower() for w in ["wheat", "barley", "قمح", "شعير", "حبوب", "محصول"])
+    is_bare_or_fallow = any(w in crop_type.lower() for w in ["bare", "fallow", "بور", "فارغ", "فارغة"])
     noise = rng.uniform(-0.015, 0.015, (grid_size, grid_size))
     inside_count = 0
 
@@ -558,7 +565,14 @@ def generate_clean_approximation(coords, crop_type, min_lng, min_lat, max_lng, m
                 poly_mask[i, j] = True
                 inside_count += 1
 
-                if is_wheat_or_annual:
+                if is_bare_or_fallow:
+                    # Bare / Empty Land (Zero tree cover, low SAVI, zero NDRE)
+                    grid_savi[i, j] = max(0.05, min(0.12, 0.09 + noise[i, j]))
+                    grid_ndvi[i, j] = max(0.08, min(0.14, 0.11 + noise[i, j]))
+                    grid_ndwi[i, j] = max(-0.40, min(-0.20, -0.28 + noise[i, j]))
+                    grid_ndti[i, j] = max(0.01, min(0.04, 0.02 + noise[i, j]))
+                    grid_ndre[i, j] = max(0.01, min(0.03, 0.02 + noise[i, j]))
+                elif is_wheat_or_annual:
                     # Harvested Wheat Straw (Dry Biomass, low SAVI, high NDTI, zero NDRE)
                     grid_savi[i, j] = max(0.08, min(0.14, 0.11 + noise[i, j]))
                     grid_ndvi[i, j] = max(0.10, min(0.18, 0.14 + noise[i, j]))
@@ -637,7 +651,7 @@ async def analyze_satellite(req: SatelliteAnalysisRequest):
                 denom_ndre = grid_nir + grid_rededge
                 grid_ndre = np.where(denom_ndre > 0, (grid_nir - grid_rededge) / denom_ndre, 0.0)
             else:
-                grid_ndre = np.where(grid_savi > 0.18, 0.14, 0.03)
+                grid_ndre = np.where(grid_savi > 0.24, 0.08, 0.02)
 
             lons = np.linspace(min_lng, max_lng, grid_size)
             lats = np.linspace(max_lat, min_lat, grid_size)
