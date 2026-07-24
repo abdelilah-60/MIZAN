@@ -24,6 +24,9 @@ except ImportError:
     HAS_TIFFFILE = False
     print("WARNING: tifffile not available.")
 
+from engine.physical_engine import calculate_bare_soil_index, unmix_spectral_endmembers, resample_20m_to_10m
+from engine.crop_registry import resolve_crop_profile
+
 router = APIRouter(prefix="/api/satellite", tags=["satellite"])
 
 STAC_SEARCH_URL = "https://earth-search.aws.element84.com/v1/search"
@@ -195,11 +198,8 @@ def erode_mask(mask: np.ndarray, iterations: int = 2) -> np.ndarray:
 
 def apply_spectral_decision_tree(grid_savi: np.ndarray, grid_ndvi: np.ndarray, grid_ndti: np.ndarray, grid_ndre: np.ndarray, poly_mask: np.ndarray, crop_type: str = "Olive"):
     """
-    Adaptive Spectral Unmixing Engine v4.0 (Absolute Soil Anchor & Protective Bare Shield):
-    1. Protective Bare Shield: Prevents zeroing if field shows mean NDVI > 0.22 or mean SAVI > 0.14.
-    2. Absolute Soil Baseline Anchor: savi_soil = min(percentile(valid_savi, 15), 0.08) - prevents tree shadows from inflating soil baseline.
-    3. Adaptive Tree Thresholding: Tree threshold set dynamically (0.11 for dense orchards, savi_soil + 0.03 for sparse).
-    4. Continuous Spectral Unmixing: Smooth gradient from 0.0% to 100.0%.
+    Mizan Universal Engine v5.0 - Decoupled Agronomic Layer
+    Uses Crop Registry profiles (resolve_crop_profile) to interpret physical spectral inputs.
     """
     h, w = grid_savi.shape
     f_tree_grid = np.zeros((h, w), dtype=np.float32)
@@ -208,6 +208,9 @@ def apply_spectral_decision_tree(grid_savi: np.ndarray, grid_ndvi: np.ndarray, g
     if not np.any(valid_mask):
         return f_tree_grid
 
+    # 1. Resolve Agronomic Profile from Crop Registry
+    profile = resolve_crop_profile(crop_type)
+
     valid_savi = grid_savi[valid_mask]
     valid_ndvi = grid_ndvi[valid_mask] if grid_ndvi is not None else valid_savi
     valid_ndre = grid_ndre[valid_mask] if grid_ndre is not None else np.zeros_like(valid_savi)
@@ -215,29 +218,29 @@ def apply_spectral_decision_tree(grid_savi: np.ndarray, grid_ndvi: np.ndarray, g
     mean_savi = float(np.mean(valid_savi))
     mean_ndvi = float(np.mean(valid_ndvi))
 
-    # 1. Protective Bare Shield (Prevent zeroing if field shows active vegetation)
+    # 2. Protective Bare Shield (Prevent zeroing if field shows active vegetation)
     is_high_vegetation = (mean_ndvi > 0.22) or (mean_savi > 0.14)
 
-    is_explicit_bare = any(w in crop_type.lower() for w in ["bare", "fallow", "بور", "فارغ", "فارغة"])
-    is_auto_bare = (float(np.percentile(valid_savi, 90)) <= 0.10) and (mean_ndvi <= 0.12)
+    is_explicit_bare = (profile["group_id"] == "GROUP_4_ANNUAL_VEGETABLES_BARE") and any(w in crop_type.lower() for w in ["bare", "fallow", "بور", "فارغ", "فارغة"])
+    is_auto_bare = (float(np.percentile(valid_savi, 90)) <= profile["bsi_bare_cutoff"]) and (mean_ndvi <= 0.12)
     is_bare_land = (is_explicit_bare or is_auto_bare) and (not is_high_vegetation)
 
     if is_bare_land:
         return f_tree_grid
 
-    # 2. Absolute Soil Baseline Anchor (Capped at 0.08 max for soil)
+    # 3. Absolute Soil Baseline Anchor
     savi_soil = float(min(np.percentile(valid_savi, 15), 0.08))
     savi_max = float(np.percentile(valid_savi, 95)) if len(valid_savi) > 0 else 0.35
 
-    # 3. Adaptive Tree Thresholding
+    # 4. Profile-Driven Adaptive Tree Thresholding
     if mean_savi > 0.14:
-        tree_threshold = 0.11
+        tree_threshold = profile["pv_min_threshold"]
     elif savi_soil <= 0.08:
-        tree_threshold = savi_soil + 0.03
+        tree_threshold = max(savi_soil + 0.03, profile["pv_min_threshold"])
     else:
-        tree_threshold = 0.11
+        tree_threshold = profile["pv_min_threshold"]
 
-    # 4. Continuous Spectral Unmixing
+    # 5. Continuous Spectral Unmixing
     for i in range(h):
         for j in range(w):
             if not poly_mask[i, j]:
@@ -248,7 +251,7 @@ def apply_spectral_decision_tree(grid_savi: np.ndarray, grid_ndvi: np.ndarray, g
             ndre_val = grid_ndre[i, j]
 
             # Rule 1: Crop Residue / Harvested Straw
-            if (ndti_val > 0.05 and ndre_val < 0.045):
+            if (ndti_val > 0.05 and ndre_val < profile["ndre_chlorophyll_min"]):
                 f_tree_grid[i, j] = 0.0
             elif (savi_val < tree_threshold):
                 f_tree_grid[i, j] = 0.0
