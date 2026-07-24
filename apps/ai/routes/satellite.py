@@ -673,7 +673,7 @@ async def analyze_satellite(req: SatelliteAnalysisRequest):
                 denom_ndre = grid_nir + grid_rededge
                 grid_ndre = np.where(denom_ndre > 0, (grid_nir - grid_rededge) / denom_ndre, 0.0)
             else:
-                grid_ndre = np.where(grid_savi > 0.24, 0.08, 0.02)
+                grid_ndre = np.clip(grid_savi * 0.45, 0.01, 0.30)
 
             lons = np.linspace(min_lng, max_lng, grid_size)
             lats = np.linspace(max_lat, min_lat, grid_size)
@@ -721,11 +721,13 @@ async def analyze_satellite(req: SatelliteAnalysisRequest):
     valid_savi = grid_savi[valid_poly_pixels]
     valid_ndvi = grid_ndvi[valid_poly_pixels]
     valid_ndwi = grid_ndwi[valid_poly_pixels]
+    valid_ndre = grid_ndre[valid_poly_pixels]
 
     mean_canopy_pct = float(np.mean(valid_f_tree)) * 100.0
     mean_savi = float(np.mean(valid_savi))
     mean_ndvi = float(np.mean(valid_ndvi))
     mean_ndwi = float(np.mean(valid_ndwi))
+    mean_ndre = float(np.mean(valid_ndre))
 
     min_savi_val = float(np.min(valid_savi))
     max_savi_val = float(np.max(valid_savi))
