@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, lazy, Suspense, useRef } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "./hooks/useAuth";
 import { useFieldData } from "./hooks/useFieldData";
 import { useFieldWeather } from "./hooks/useFieldWeather";
@@ -72,6 +73,61 @@ export default function App() {
   });
   const fieldAgronomy = useFieldAgronomy({ token: auth.token, toast: addToast });
 
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // Sync URL location with activeTab and selectedFieldId
+  useEffect(() => {
+    const path = location.pathname;
+    if (path.startsWith("/fields/")) {
+      const fieldId = path.replace("/fields/", "");
+      if (fieldId && fieldId !== "null") {
+        fieldData.setSelectedFieldId(fieldId);
+        fieldData.setActiveTab("fields");
+      }
+    } else if (path === "/analytics") {
+      fieldData.setActiveTab("analytics");
+      fieldData.setSelectedFieldId(null);
+    } else if (path === "/profile") {
+      fieldData.setActiveTab("profile");
+      fieldData.setSelectedFieldId(null);
+    } else if (path === "/knowledge" || path === "/admin") {
+      fieldData.setActiveTab("knowledge");
+      fieldData.setSelectedFieldId(null);
+    } else if (path === "/create-field") {
+      fieldData.setActiveTab("create-field");
+      fieldData.setSelectedFieldId(null);
+    } else if (path === "/" || path === "/fields") {
+      fieldData.setActiveTab("fields");
+      fieldData.setSelectedFieldId(null);
+    }
+  }, [location.pathname]);
+
+  const handleTabChange = useCallback(
+    (tab: any) => {
+      fieldData.setActiveTab(tab);
+      fieldData.setSelectedFieldId(null);
+      if (tab === "fields") navigate("/fields");
+      else if (tab === "analytics") navigate("/analytics");
+      else if (tab === "profile") navigate("/profile");
+      else if (tab === "knowledge") navigate("/knowledge");
+      else if (tab === "create-field") navigate("/create-field");
+    },
+    [navigate, fieldData]
+  );
+
+  const handleSelectField = useCallback(
+    (fieldId: string | null) => {
+      fieldData.setSelectedFieldId(fieldId);
+      if (fieldId) {
+        navigate(`/fields/${fieldId}`);
+      } else {
+        navigate("/fields");
+      }
+    },
+    [navigate, fieldData]
+  );
+
   // Health check on mount + when token changes
   useEffect(() => {
     if (!auth.token) return;
@@ -128,7 +184,7 @@ export default function App() {
         health={health}
         onLogout={auth.logout}
         activeTab={fieldData.activeTab}
-        onTabChange={fieldData.setActiveTab}
+        onTabChange={handleTabChange}
         searchQuery={fieldData.searchQuery}
         onSearchChange={fieldData.setSearchQuery}
       />
@@ -142,11 +198,11 @@ export default function App() {
             <SidebarLeft
               user={auth.user}
               activeTab={fieldData.activeTab}
-              setActiveTab={fieldData.setActiveTab}
+              setActiveTab={handleTabChange}
               fieldsCount={fieldData.fields.length}
               onLogout={auth.logout}
               selectedFieldId={fieldData.selectedFieldId}
-              setSelectedFieldId={fieldData.setSelectedFieldId}
+              setSelectedFieldId={handleSelectField}
             />
           </div>
 
@@ -178,7 +234,7 @@ export default function App() {
                     onLogOperationDirectly={fieldOperations.logOperationDirectly}
                     onDeleteOperation={fieldOperations.handleDeleteOperation}
                     onSaveAgronomy={fieldAgronomy.saveAgronomySection}
-                    onClose={() => fieldData.setSelectedFieldId(null)}
+                    onClose={() => handleSelectField(null)}
                   />
                 ) : (
                   <>
@@ -195,7 +251,7 @@ export default function App() {
                       farms={fieldData.farms}
                       weatherData={fieldWeather.weatherData}
                       onFetchWeather={fieldWeather.fetchWeather}
-                      onSelectField={fieldData.setSelectedFieldId}
+                      onSelectField={handleSelectField}
                       onDeleteField={fieldData.handleDeleteField}
                       debouncedSearchQuery={fieldData.debouncedSearchQuery}
                     />

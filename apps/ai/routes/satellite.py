@@ -26,7 +26,7 @@ except ImportError:
 
 from engine.physical_engine import calculate_bare_soil_index, unmix_spectral_endmembers, resample_20m_to_10m
 from engine.crop_registry import resolve_crop_profile
-from engine.phenology_engine import analyze_phenology_profile, generate_synthetic_phenology_series
+from engine.phenology_engine import analyze_phenology_profile, generate_synthetic_phenology_series, query_historical_stac_phenology_series
 
 router = APIRouter(prefix="/api/satellite", tags=["satellite"])
 
@@ -805,6 +805,6 @@ async def analyze_satellite(req: SatelliteAnalysisRequest):
             "stressStatus": "HIGH_STRESS" if hydric_stress_pct > 25 else ("MODERATE_STRESS" if hydric_stress_pct > 10 else "OPTIMAL"),
             "overlayDataUrl": ndwi_overlay,
         },
-        "phenologyProfile": analyze_phenology_profile(generate_synthetic_phenology_series(coords, crop_type, mean_savi, mean_ndre)),
+        "phenologyProfile": analyze_phenology_profile(await query_historical_stac_phenology_series(coords, crop_type, mean_savi, mean_ndre)),
         "agronomicAdvice": advice_ar
     }
