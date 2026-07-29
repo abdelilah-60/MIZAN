@@ -331,12 +331,8 @@ export function FieldWorkspace({
             onShowGuide={() => setShowIndexGuide(true)}
           />
 
-          {/* Floating Stats Badges on Map Canvas */}
+          {/* Floating Stage Stats Badge on Map Canvas */}
           <div className="absolute bottom-4 right-4 flex gap-2 z-20">
-            <div className="bg-slate-950/80 backdrop-blur-md px-3 py-1.5 rounded-2xl border border-emerald-500/30 text-[11px] font-bold text-emerald-400 shadow-xl flex items-center gap-1.5">
-              <span>📏</span>
-              <span>{field.area} ha</span>
-            </div>
             {summary && (
               <div className="bg-slate-950/80 backdrop-blur-md px-3 py-1.5 rounded-2xl border border-amber-500/30 text-[11px] font-bold text-amber-400 shadow-xl flex items-center gap-1.5">
                 <span>{stageLabels[summary.currentStage]?.split(" ")[0] || "🌱"}</span>

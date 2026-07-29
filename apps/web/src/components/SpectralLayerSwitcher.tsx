@@ -6,7 +6,7 @@ export interface SpectralLayerSwitcherProps {
   satelliteData: any;
   loadingSatellite: boolean;
   onClose: () => void;
-  onShowGuide: () => void;
+  onShowGuide?: () => void;
 }
 
 export const SpectralLayerSwitcher = React.memo(function SpectralLayerSwitcher({
@@ -15,7 +15,6 @@ export const SpectralLayerSwitcher = React.memo(function SpectralLayerSwitcher({
   satelliteData,
   loadingSatellite,
   onClose,
-  onShowGuide
 }: SpectralLayerSwitcherProps) {
   return (
     <>
@@ -170,13 +169,6 @@ export const SpectralLayerSwitcher = React.memo(function SpectralLayerSwitcher({
               <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-red-600"></span> إجهاد حاد ⚠️</span>
             </>
           )}
-
-          <button
-            onClick={onShowGuide}
-            className="bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 hover:text-white px-2.5 py-1 rounded-xl text-[9px] font-bold border border-emerald-500/30 transition-all ml-auto flex items-center gap-1"
-          >
-            <span>ℹ️</span> دليل المؤشرات
-          </button>
         </div>
       )}
     </>

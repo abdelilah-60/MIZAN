@@ -1,5 +1,6 @@
 import type { User, HealthStatus, ActiveTab } from "../lib/types";
 import { NotificationCenter } from "./NotificationCenter";
+import { LanguageSwitcher } from "./LanguageSwitcher";
 
 interface HeaderProps {
   user: User | null;
@@ -101,6 +102,7 @@ export function Header({
 
           {/* Interactive Notification Bell */}
           <NotificationCenter />
+          <LanguageSwitcher />
 
           {/* User Block & Logout */}
           <div className="flex items-center gap-3 border-l border-white/10 pl-3">

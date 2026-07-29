@@ -1,0 +1,80 @@
+{
+  "common": {
+    "appTitle": "Plateforme Agricole Mizan",
+    "subTitle": "Télédétection & Gestion des Exploitations par IA",
+    "searchPlaceholder": "Rechercher une parcelle, variété ou ferme...",
+    "close": "Fermer",
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "delete": "Supprimer",
+    "edit": "Modifier",
+    "confirm": "Confirmer",
+    "loading": "Chargement...",
+    "success": "Opération réussie",
+    "error": "Une erreur est survenue",
+    "ha": "ha",
+    "liters": "L",
+    "minutes": "min",
+    "kg": "kg"
+  },
+  "nav": {
+    "feed": "Accueil & Exploitation",
+    "analytics": "Tableau de Bord & Analyses",
+    "knowledge": "Base de Connaissances",
+    "profile": "Profil Utilisateur",
+    "createField": "Nouvelle Parcelle",
+    "logout": "Déconnexion"
+  },
+  "workspace": {
+    "tabs": {
+      "agronomy": "💧 Recommandations & Irrigation",
+      "insights": "🧠 Santé & Risques Phytosanitaires",
+      "operations": "📋 Journal des Activités & Météo"
+    },
+    "kpis": {
+      "overallHealth": "Santé Globale",
+      "canopyCover": "Couverture Canopée (fCOVER)",
+      "gddStage": "Stade Phénologique (GDD)",
+      "hydricStress": "Stress Hydrique (NDWI)"
+    },
+    "actions": {
+      "pdfReport": "Rapport Saisonner (PDF)",
+      "indexGuide": "Guide des Indices Spectraux",
+      "applyDose": "Appliquer la Dose Recommandée",
+      "logIrrigation": "Valider l'Irrigation du Jour",
+      "editIrrigation": "Ajuster l'Irrigation"
+    },
+    "advice": {
+      "sentinelTitle": "Analyse Spectrale Spatiale (Sentinel-2A • 10m)",
+      "bareSoil": "Sol nu / Jachère sans canopée d'arbres. Recommandations d'amendement adaptées.",
+      "denseCanopy": "Canopée dense et homogène en excellente santé végétale.",
+      "balancedCanopy": "Canopée équilibrée conforme au développement végétatif."
+    }
+  },
+  "phenology": {
+    "DORMANCE": "❄️ Dormance Hivernale",
+    "DEBOURREMENT": "🌱 Débourrement des Bourgeons",
+    "FLORAISON": "🌸 Floraison",
+    "NOUAISON": "👶 Nouaison des Fruits",
+    "CROISSANCE": "📈 Durcissement du Noyau & Grossissement",
+    "VERAISON": "🎨 Véraison & Maturation",
+    "RECOLTE": "🫒 Récolte"
+  },
+  "spectral": {
+    "natural": "Naturel",
+    "canopy": "Canopée (% Cover)",
+    "savi": "Santé SAVI",
+    "ndvi": "Végétation NDVI",
+    "ndwi": "Stress Hydrique NDWI",
+    "ndre": "Red Edge NDRE",
+    "ndti": "Résidus NDTI"
+  },
+  "operations": {
+    "IRRIGATION": "Irrigation",
+    "FERTILIZER": "Fertilisation",
+    "PESTICIDE": "Traitement Phytosanitaire",
+    "HARVEST": "Récolte",
+    "PRUNING": "Taille",
+    "TILLAGE": "Labour"
+  }
+}

@@ -1,0 +1,80 @@
+{
+  "common": {
+    "appTitle": "منصة ميزان الفلاحية الذكية",
+    "subTitle": "الاستشعار عن بعد وإدارة الضيعات بالذكاء الاصطناعي",
+    "searchPlaceholder": "ابحث عن حقل، صنف، أو ضيعة...",
+    "close": "إغلاق",
+    "save": "حفظ التغيرات",
+    "cancel": "إلغاء",
+    "delete": "حذف",
+    "edit": "تعديل",
+    "confirm": "تأكيد",
+    "loading": "جاري التحميل...",
+    "success": "تمت العملية بنجاح",
+    "error": "حدث خطأ غير متوقع",
+    "ha": "هكتار",
+    "liters": "لتر",
+    "minutes": "دقيقة",
+    "kg": "كجم"
+  },
+  "nav": {
+    "feed": "الرئيسية والمستغلة",
+    "analytics": "التحليلات البيانية",
+    "knowledge": "قاعدة المعرفة والأنطولوجيا",
+    "profile": "الملف الشخصي",
+    "createField": "إضافة حقل جديد",
+    "logout": "تسجيل الخروج"
+  },
+  "workspace": {
+    "tabs": {
+      "agronomy": "💧 التوصيات وحسابات الري",
+      "insights": "🧠 صحة الحقل والوقاية من الأمراض",
+      "operations": "📋 سجل العمليات والطقس"
+    },
+    "kpis": {
+      "overallHealth": "الصحة الإجمالية",
+      "canopyCover": "كثافة العرش الشجري الحقيقية",
+      "gddStage": "المرحلة الحرارية الفينولوجية",
+      "hydricStress": "مؤشر الإجهاد الهيدروليكي"
+    },
+    "actions": {
+      "pdfReport": "التقرير الفلاحي الموسمي (PDF)",
+      "indexGuide": "دليل المؤشرات الفضائية",
+      "applyDose": "تطبيق الجرعة الموصى بها",
+      "logIrrigation": "تأكيد تنفيذ الري اليومي",
+      "editIrrigation": "تعديل كمية الري"
+    },
+    "advice": {
+      "sentinelTitle": "التحليل الطيفي الفضائي (Sentinel-2A • 10m)",
+      "bareSoil": "أرض فارغة / بور بدون غطاء أشجار حية. تم تحييد توصيات التسميد الخاصة بالأشجار.",
+      "denseCanopy": "غطاء شجري كثيف ومتجانس في حالة صحية ممتازة.",
+      "balancedCanopy": "غطاء شجري متوازن وفي حدود النمو الطبيعي."
+    }
+  },
+  "phenology": {
+    "DORMANCE": "❄️ مرحلة السكون الشتوي (Dormance)",
+    "DEBOURREMENT": "🌱 خروج البراعم الربيعية (Débourrement)",
+    "FLORAISON": "🌸 مرحلة الإزهار (Floraison)",
+    "NOUAISON": "👶 عقد الثمار الفتية (Nouaison)",
+    "CROISSANCE": "📈 تصلب النواة وتراكم الزيت (Croissance/Durcissement)",
+    "VERAISON": "🎨 تلوين الثمرة وبداية النضج (Véraison)",
+    "RECOLTE": "🫒 الجني والحصاد (Récolte)"
+  },
+  "spectral": {
+    "natural": "طبيعي",
+    "canopy": "كثافة الأشجار (% Cover)",
+    "savi": "صحة الأشجار (SAVI)",
+    "ndvi": "الغطاء النباتي (NDVI)",
+    "ndwi": "الإجهاد المائي (NDWI)",
+    "ndre": "حافة الكلوروفيل (NDRE)",
+    "ndti": "مؤشر التبن والقش (NDTI)"
+  },
+  "operations": {
+    "IRRIGATION": "ري (Irrigation)",
+    "FERTILIZER": "تسميد (Fertilisation)",
+    "PESTICIDE": "معالجة وقائية (Pesticides)",
+    "HARVEST": "جني المحصول (Récolte)",
+    "PRUNING": "تقليم الأشجار (Taille)",
+    "TILLAGE": "حرث التربة (Labour)"
+  }
+}
