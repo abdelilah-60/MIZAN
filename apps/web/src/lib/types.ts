@@ -16,7 +16,7 @@ export interface HealthStatus {
   db: string;
 }
 
-export type ActiveTab = "farms" | "fields" | "knowledge" | "profile" | "create-field";
+export type ActiveTab = "farms" | "fields" | "knowledge" | "profile" | "create-field" | "analytics";
 
 export interface WeatherData {
   current: {

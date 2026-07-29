@@ -13,6 +13,7 @@ import { FieldForm } from "./components/FieldForm";
 import { FieldGrid } from "./components/FieldGrid";
 import { FieldWorkspace } from "./components/FieldWorkspace";
 import { ProfilePage } from "./components/ProfilePage";
+import { AnalyticsDashboard } from "./components/AnalyticsDashboard";
 import { LogOperationModal } from "./components/LogOperationModal";
 import { Pagination } from "./components/Pagination";
 import { ToastContainer } from "./components/ToastContainer";
@@ -243,6 +244,19 @@ export default function App() {
                 fields={fieldData.fields}
                 operationsData={fieldOperations.operationsData}
                 onToast={addToast}
+              />
+            )}
+
+            {/* ========== ANALYTICS TAB ========== */}
+            {fieldData.activeTab === "analytics" && (
+              <AnalyticsDashboard
+                fields={fieldData.fields}
+                operationsData={Object.values(fieldOperations.operationsData).flat()}
+                token={auth.token || ""}
+                onSelectField={(id) => {
+                  fieldData.setSelectedFieldId(id);
+                  fieldData.setActiveTab("fields");
+                }}
               />
             )}
 

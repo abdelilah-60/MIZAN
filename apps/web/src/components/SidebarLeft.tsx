@@ -68,6 +68,21 @@ export function SidebarLeft({
             )}
           </button>
 
+          <button
+            type="button"
+            onClick={() => handleTabClick("analytics")}
+            className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-bold transition-all ${
+              activeTab === "analytics"
+                ? "bg-teal-500/10 text-teal-400 border border-teal-500/20"
+                : "text-slate-400 hover:bg-white/5 hover:text-slate-200 border border-transparent"
+            }`}
+          >
+            <div className="flex items-center gap-2.5">
+              <span className="text-sm">📊</span>
+              <span>Analyses (التحليلات)</span>
+            </div>
+          </button>
+
           {user?.role === "DEVELOPER" && (
             <button
               type="button"
