@@ -1,5 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from "react";
-import L from "leaflet";
+import { useState, useEffect, useMemo } from "react";
 import type {
   Field,
   WeatherData,
@@ -13,6 +12,11 @@ import { InsightsPanel } from "./InsightsPanel";
 import { OperationsPanel } from "./OperationsPanel";
 import { AgronomyPanel } from "./AgronomyPanel";
 import { formatDate } from "../lib/utils";
+import { SatelliteMapCanvas } from "./SatelliteMapCanvas";
+import { SpectralLayerSwitcher } from "./SpectralLayerSwitcher";
+import { DigitalTwinKPIs } from "./DigitalTwinKPIs";
+import { SmartRecommendationCard } from "./SmartRecommendationCard";
+import { SpectralIndexGuide } from "./SpectralIndexGuide";
 
 interface FieldWorkspaceProps {
   field: Field;
@@ -39,132 +43,6 @@ interface FieldWorkspaceProps {
 }
 
 type WorkspaceTab = "agronomy" | "insights" | "operations";
-
-interface SatelliteFieldCoverProps {
-  geoPolygon?: any;
-  satelliteMode: "SATELLITE" | "CANOPY" | "SAVI" | "NDVI" | "NDWI";
-  satelliteData: any;
-}
-
-/* ─── Real High-Res ESRI Satellite Map Cover with Mask & Overlays ──── */
-function SatelliteFieldCover({ geoPolygon, satelliteMode, satelliteData }: SatelliteFieldCoverProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<L.Map | null>(null);
-
-  useEffect(() => {
-    if (!containerRef.current || !geoPolygon?.coordinates?.[0]) return;
-
-    if (mapRef.current) {
-      mapRef.current.remove();
-      mapRef.current = null;
-    }
-
-    const coords = geoPolygon.coordinates[0];
-    if (coords.length < 3) return;
-
-    // ESRI World Imagery Satellite Tile Layer (High Resolution Aerial)
-    const satelliteTile = L.tileLayer(
-      "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-      {
-        attribution: "Tiles &copy; Esri",
-        maxZoom: 19,
-      }
-    );
-
-    // Initialize Map centered on field
-    const map = L.map(containerRef.current, {
-      layers: [satelliteTile],
-      zoomControl: false,
-      attributionControl: false,
-      scrollWheelZoom: false,
-      doubleClickZoom: true,
-      dragging: true,
-    });
-    mapRef.current = map;
-
-    // 1. Inverted Mask: Mask out EVERYTHING outside field boundaries
-    const worldOuterRing: [number, number][] = [
-      [-180, -90],
-      [180, -90],
-      [180, 90],
-      [-180, 90],
-      [-180, -90],
-    ];
-
-    const invertedMaskFeature = {
-      type: "Feature",
-      geometry: {
-        type: "Polygon",
-        coordinates: [worldOuterRing, coords],
-      },
-    };
-
-    L.geoJSON(invertedMaskFeature as any, {
-      style: {
-        color: "transparent",
-        fillColor: "#020617",
-        fillOpacity: 0.94,
-      },
-    }).addTo(map);
-
-    // 2. Add Polygon Layer for neon emerald border
-    const polygonLayer = L.geoJSON(geoPolygon, {
-      style: {
-        color: "#10b981",
-        weight: 3,
-        opacity: 0.95,
-        fillColor: "transparent",
-        fillOpacity: 0,
-      },
-    }).addTo(map);
-
-    // Get polygon bounds and fit map perfectly
-    const bounds = polygonLayer.getBounds();
-    if (bounds.isValid()) {
-      map.fitBounds(bounds, { padding: [30, 30] });
-    }
-
-    // Add pulsing centroid pin
-    const center = bounds.getCenter();
-    const pulseIcon = L.divIcon({
-      className: "custom-pulse-marker",
-      html: `<div class="relative flex items-center justify-center">
-        <div class="w-6 h-6 rounded-full bg-emerald-400/40 animate-ping absolute"></div>
-        <div class="w-3.5 h-3.5 rounded-full bg-emerald-400 border-2 border-slate-950 shadow-lg"></div>
-      </div>`,
-      iconSize: [24, 24],
-      iconAnchor: [12, 12],
-    });
-    L.marker(center, { icon: pulseIcon }).addTo(map);
-
-    // 3. Render Overlay Image for CANOPY / SAVI / NDVI / NDWI if selected and data is ready
-    if (satelliteMode === "CANOPY" && satelliteData?.canopyCover?.overlayDataUrl && bounds.isValid()) {
-      L.imageOverlay(satelliteData.canopyCover.overlayDataUrl, bounds, { opacity: 0.88 }).addTo(map);
-    } else if (satelliteMode === "SAVI" && satelliteData?.savi?.overlayDataUrl && bounds.isValid()) {
-      L.imageOverlay(satelliteData.savi.overlayDataUrl, bounds, { opacity: 0.88 }).addTo(map);
-    } else if (satelliteMode === "NDVI" && satelliteData?.ndvi?.overlayDataUrl && bounds.isValid()) {
-      L.imageOverlay(satelliteData.ndvi.overlayDataUrl, bounds, { opacity: 0.88 }).addTo(map);
-    } else if (satelliteMode === "NDWI" && satelliteData?.ndwi?.overlayDataUrl && bounds.isValid()) {
-      L.imageOverlay(satelliteData.ndwi.overlayDataUrl, bounds, { opacity: 0.88 }).addTo(map);
-    }
-
-    return () => {
-      if (mapRef.current) {
-        mapRef.current.remove();
-        mapRef.current = null;
-      }
-    };
-  }, [geoPolygon, satelliteMode, satelliteData]);
-
-  return (
-    <div className="absolute inset-0 overflow-hidden">
-      <div ref={containerRef} className="w-full h-full z-0" />
-      {/* Subtle UI gradient overlays */}
-      <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/20 to-transparent pointer-events-none z-10" />
-      <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-slate-950 to-transparent pointer-events-none z-10" />
-    </div>
-  );
-}
 
 export function FieldWorkspace({
   field,
@@ -433,7 +311,7 @@ export function FieldWorkspace({
 
         {/* Live Full-Bleed Satellite Map Canvas */}
         <div className="relative w-full h-[260px] md:h-[340px]">
-          <SatelliteFieldCover
+          <SatelliteMapCanvas
             geoPolygon={field.geoPolygon}
             satelliteMode={satelliteMode}
             satelliteData={satelliteData}
@@ -442,167 +320,14 @@ export function FieldWorkspace({
           {/* Bottom Vignette Gradient Overlay */}
           <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-slate-950 via-slate-950/60 to-transparent pointer-events-none z-10" />
 
-          {/* Floating Glass Layer Switcher Bar */}
-          <div className="absolute top-3 left-3 right-14 z-20 flex items-center justify-between pointer-events-auto flex-wrap gap-2">
-            <div className="bg-slate-950/85 backdrop-blur-xl border border-white/15 rounded-2xl p-1.5 flex items-center gap-1 shadow-2xl overflow-x-auto scrollbar-none max-w-full">
-              <button
-                type="button"
-                onClick={() => setSatelliteMode("SATELLITE")}
-                className={`px-3 py-1.5 rounded-xl text-[10px] md:text-xs font-bold transition-all flex items-center gap-1.5 ${
-                  satelliteMode === "SATELLITE"
-                    ? "bg-emerald-500 text-slate-950 shadow-[0_0_15px_rgba(16,185,129,0.5)] font-black"
-                    : "text-slate-300 hover:text-white hover:bg-white/5"
-                }`}
-              >
-                <span>🛰️</span>
-                <span>طبيعي</span>
-                {loadingSatellite && <span className="w-1.5 h-1.5 rounded-full bg-slate-950 animate-ping" />}
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setSatelliteMode("CANOPY")}
-                className={`px-3 py-1.5 rounded-xl text-[10px] md:text-xs font-bold transition-all flex items-center gap-1.5 ${
-                  satelliteMode === "CANOPY"
-                    ? "bg-emerald-400 text-slate-950 shadow-[0_0_15px_rgba(52,211,153,0.5)] font-black"
-                    : "text-slate-300 hover:text-white hover:bg-white/5"
-                }`}
-              >
-                <span>🌳</span>
-                <span>كثافة الأشجار</span>
-                {satelliteData?.canopyCover && (
-                  <span className="bg-slate-950/50 text-emerald-300 px-2 py-0.5 rounded-lg font-mono text-[10px] font-bold border border-emerald-500/30">
-                    {satelliteData.canopyCover.meanPct}%
-                  </span>
-                )}
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setSatelliteMode("SAVI")}
-                className={`px-3 py-1.5 rounded-xl text-[10px] md:text-xs font-bold transition-all flex items-center gap-1.5 ${
-                  satelliteMode === "SAVI"
-                    ? "bg-teal-400 text-slate-950 shadow-[0_0_15px_rgba(45,212,191,0.5)] font-black"
-                    : "text-slate-300 hover:text-white hover:bg-white/5"
-                }`}
-              >
-                <span>🌿</span>
-                <span>صحة SAVI</span>
-                {satelliteData?.savi && (
-                  <span className="bg-slate-950/50 text-teal-300 px-2 py-0.5 rounded-lg font-mono text-[10px] font-bold border border-teal-500/30">
-                    {satelliteData.savi.mean}
-                  </span>
-                )}
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setSatelliteMode("NDVI")}
-                className={`px-3 py-1.5 rounded-xl text-[10px] md:text-xs font-bold transition-all flex items-center gap-1.5 ${
-                  satelliteMode === "NDVI"
-                    ? "bg-cyan-400 text-slate-950 shadow-[0_0_15px_rgba(34,211,238,0.5)] font-black"
-                    : "text-slate-300 hover:text-white hover:bg-white/5"
-                }`}
-              >
-                <span>🌱</span>
-                <span>الغطاء NDVI</span>
-                {satelliteData?.ndvi && (
-                  <span className="bg-slate-950/50 text-cyan-300 px-2 py-0.5 rounded-lg font-mono text-[10px] font-bold border border-cyan-500/30">
-                    {satelliteData.ndvi.mean}
-                  </span>
-                )}
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setSatelliteMode("NDWI")}
-                className={`px-3 py-1.5 rounded-xl text-[10px] md:text-xs font-bold transition-all flex items-center gap-1.5 ${
-                  satelliteMode === "NDWI"
-                    ? "bg-blue-500 text-white shadow-[0_0_15px_rgba(59,130,246,0.5)] font-black"
-                    : "text-slate-300 hover:text-white hover:bg-white/5"
-                }`}
-              >
-                <span>💧</span>
-                <span>الإجهاد NDWI</span>
-                {satelliteData?.ndwi && (
-                  <span className="bg-slate-950/50 text-blue-300 px-2 py-0.5 rounded-lg font-mono text-[10px] font-bold border border-blue-500/30">
-                    {satelliteData.ndwi.hydricStressPct}%
-                  </span>
-                )}
-              </button>
-            </div>
-
-            {/* Satellite Data Source Pulse Badge */}
-            {satelliteData && (
-              <div className={`bg-slate-950/90 backdrop-blur-xl border px-3 py-1.5 rounded-2xl text-[10px] font-bold flex items-center gap-2 shadow-xl ${
-                satelliteData.dataSource === "sentinel-2-real"
-                  ? "border-emerald-500/40 text-emerald-400"
-                  : "border-amber-500/40 text-amber-400"
-              }`}>
-                <span className={`w-2 h-2 rounded-full animate-pulse ${
-                  satelliteData.dataSource === "sentinel-2-real" ? "bg-emerald-400 shadow-[0_0_8px_#10b981]" : "bg-amber-400"
-                }`} />
-                <span>{satelliteData.dataSource === "sentinel-2-real" ? "Sentinel-2A • 10m ✓" : "تقريبي (Demo)"}</span>
-              </div>
-            )}
-          </div>
-
-          {/* Close Button */}
-          <button
-            onClick={onClose}
-            className="absolute top-3 right-3 bg-slate-950/80 hover:bg-slate-800 border border-white/20 hover:border-white/40 text-white font-bold p-2.5 rounded-full transition-all z-20 shadow-2xl active:scale-95 backdrop-blur-md"
-            title="Fermer / إغلاق"
-          >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-
-          {/* Legend Banner when CANOPY / SAVI / NDVI or NDWI is active */}
-          {satelliteMode !== "SATELLITE" && (
-            <div className="absolute top-16 left-3 z-20 bg-slate-950/90 backdrop-blur-xl border border-white/15 px-3.5 py-2 rounded-2xl text-[10px] font-mono text-slate-300 flex items-center gap-3 shadow-2xl animate-in fade-in flex-wrap">
-              {satelliteMode === "CANOPY" ? (
-                <>
-                  <span className="font-bold text-emerald-400">كثافة الأشجار الحقيقية (% Cover):</span>
-                  <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> كثيفة عالية (&ge;35%)</span>
-                  <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-lime-500"></span> متوازنة (18%-35%)</span>
-                  <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span> خفيفة/فتية (8%-18%)</span>
-                  <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-slate-400"></span> تربة/أرض محصودة (0%)</span>
-                </>
-              ) : satelliteMode === "SAVI" ? (
-                <>
-                  <span className="font-bold text-emerald-400">صحة الأشجار (SAVI):</span>
-                  <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> ممتازة (&ge;0.28)</span>
-                  <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-lime-500"></span> جيدة (0.20-0.28)</span>
-                  <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span> متوسطة (0.14-0.20)</span>
-                  <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-red-500"></span> ضعيفة (&lt;0.14)</span>
-                </>
-              ) : satelliteMode === "NDVI" ? (
-                <>
-                  <span className="font-bold text-teal-400">الغطاء النباتي (NDVI):</span>
-                  <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> كثيفة (&ge;0.30)</span>
-                  <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-lime-500"></span> متوازنة (0.20-0.30)</span>
-                  <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span> خفيفة (0.14-0.20)</span>
-                  <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-red-500"></span> تربة/ضعيفة (&lt;0.14)</span>
-                </>
-              ) : (
-                <>
-                  <span className="font-bold text-blue-400">دليل الإجهاد المائي:</span>
-                  <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-blue-500"></span> ري مثالي (&ge;0.02)</span>
-                  <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-cyan-500"></span> رطوبة متوازنة</span>
-                  <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span> جفاف خفيف</span>
-                  <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-red-600"></span> إجهاد حاد ⚠️</span>
-                </>
-              )}
-
-              <button
-                onClick={() => setShowIndexGuide(true)}
-                className="bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 hover:text-white px-2.5 py-1 rounded-xl text-[9px] font-bold border border-emerald-500/30 transition-all ml-auto flex items-center gap-1"
-              >
-                <span>ℹ️</span> دليل المؤشرات
-              </button>
-            </div>
-          )}
+          <SpectralLayerSwitcher
+            satelliteMode={satelliteMode}
+            setSatelliteMode={setSatelliteMode}
+            satelliteData={satelliteData}
+            loadingSatellite={loadingSatellite}
+            onClose={onClose}
+            onShowGuide={() => setShowIndexGuide(true)}
+          />
 
           {/* Floating Stats Badges on Map Canvas */}
           <div className="absolute bottom-4 right-4 flex gap-2 z-20">
@@ -661,103 +386,11 @@ export function FieldWorkspace({
             </div>
           </div>
 
-          {/* Digital Twin 4-KPI Grid */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
-            {/* KPI 1: Overall Health Score */}
-            <div className="bg-slate-900/80 border border-emerald-500/20 p-4 rounded-2xl space-y-1 shadow-lg relative overflow-hidden group hover:border-emerald-500/40 transition-all">
-              <div className="flex items-center justify-between text-slate-400 text-[10px] font-bold uppercase tracking-wider">
-                <span>الصحة الإجمالية</span>
-                <span>💚</span>
-              </div>
-              <div className="flex items-baseline gap-1.5 pt-1">
-                <span className="text-2xl font-black text-emerald-400 font-mono">
-                  {satelliteData?.canopyCover?.meanPct && satelliteData.canopyCover.meanPct > 5
-                    ? `${Math.min(100, Math.max(60, Math.round(satelliteData.canopyCover.meanPct * 0.5 + (satelliteData.savi?.mean || 0.2) * 200)))}`
-                    : "0"}
-                </span>
-                <span className="text-slate-500 font-bold">/100</span>
-              </div>
-              <p className="text-[10px] font-bold text-emerald-300/80">
-                {satelliteData?.canopyCover?.meanPct && satelliteData.canopyCover.meanPct > 5 ? "حالة صحية ممتازة 🟢" : "أرض فارغة / بور 🏜️"}
-              </p>
-            </div>
-
-            {/* KPI 2: Canopy Cover % */}
-            <div className="bg-slate-900/80 border border-emerald-500/20 p-4 rounded-2xl space-y-1 shadow-lg relative overflow-hidden group hover:border-emerald-500/40 transition-all">
-              <div className="flex items-center justify-between text-slate-400 text-[10px] font-bold uppercase tracking-wider">
-                <span>كثافة العرش الحقيقية</span>
-                <span>🌳</span>
-              </div>
-              <div className="flex items-baseline gap-1 pt-1">
-                <span className="text-2xl font-black text-white font-mono">
-                  {satelliteData?.canopyCover?.meanPct || 0}%
-                </span>
-              </div>
-              <p className="text-[10px] font-bold text-slate-400">
-                {satelliteData?.canopyCover?.meanPct >= 35 ? "عرش كثيف متجانس 🟢" : (satelliteData?.canopyCover?.meanPct >= 18 ? "عرش متوازن 🟢" : "0% أشجار 🔴")}
-              </p>
-            </div>
-
-            {/* KPI 3: GDD Accumulation & Stage */}
-            <div className="bg-slate-900/80 border border-amber-500/20 p-4 rounded-2xl space-y-1 shadow-lg relative overflow-hidden group hover:border-amber-500/40 transition-all">
-              <div className="flex items-center justify-between text-slate-400 text-[10px] font-bold uppercase tracking-wider">
-                <span>المرحلة & GDD</span>
-                <span>🌡️</span>
-              </div>
-              <div className="flex items-baseline gap-1.5 pt-1">
-                <span className="text-2xl font-black text-amber-400 font-mono">
-                  {summary ? summary.accumulatedGdd.toFixed(0) : "1805"}
-                </span>
-                <span className="text-slate-500 font-bold">GDD</span>
-              </div>
-              <p className="text-[10px] font-bold text-amber-300/90 truncate">
-                {summary ? stageLabels[summary.currentStage] : "🎨 تلوين الثمرة"}
-              </p>
-            </div>
-
-            {/* KPI 4: Water Stress Index (NDWI) */}
-            <div className="bg-slate-900/80 border border-blue-500/20 p-4 rounded-2xl space-y-1 shadow-lg relative overflow-hidden group hover:border-blue-500/40 transition-all">
-              <div className="flex items-center justify-between text-slate-400 text-[10px] font-bold uppercase tracking-wider">
-                <span>الإجهاد المائي (NDWI)</span>
-                <span>💧</span>
-              </div>
-              <div className="flex items-baseline gap-1 pt-1">
-                <span className="text-2xl font-black text-blue-400 font-mono">
-                  {satelliteData?.ndwi?.hydricStressPct || 0}%
-                </span>
-              </div>
-              <p className="text-[10px] font-bold text-blue-300/80">
-                {satelliteData?.ndwi?.hydricStressPct > 20 ? "إجهاد مائي كاشف ⚠️" : "ري متوازن 100% 💧"}
-              </p>
-            </div>
-          </div>
-
-          {/* Satellite Agronomic Advice Banner */}
-          {satelliteData?.agronomicAdvice && (
-            <div className="p-4 bg-slate-900/90 border border-emerald-500/30 rounded-2xl flex items-start gap-3 shadow-xl">
-              <span className="text-xl p-2 bg-emerald-500/10 border border-emerald-500/20 rounded-xl">📡</span>
-              <div className="flex flex-col space-y-1">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-[10px] font-black text-emerald-400 uppercase tracking-wider">
-                    التحليل الطيفي الفضائي (Sentinel-2A • 10m)
-                  </span>
-                  {satelliteData.lastPassDate && satelliteData.lastPassDate !== "N/A" && (
-                    <span className="text-[9px] font-mono text-sky-400 bg-sky-500/10 border border-sky-500/20 px-2 py-0.5 rounded-lg font-bold">
-                      📅 تصوير: {satelliteData.lastPassDate}
-                    </span>
-                  )}
-                  {satelliteData.phenologyProfile && (
-                    <span className="text-[9px] font-mono text-emerald-300 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-lg font-bold">
-                      📈 90d: {satelliteData.phenologyProfile.landCoverClassAr} ({satelliteData.phenologyProfile.deltaNdvi} ΔNDVI)
-                    </span>
-                  )}
-                </div>
-                <p className="text-xs text-slate-200 font-medium leading-relaxed">
-                  {satelliteData.agronomicAdvice}
-                </p>
-              </div>
-            </div>
-          )}
+          <DigitalTwinKPIs
+            satelliteData={satelliteData}
+            summary={summary}
+            stageLabels={stageLabels}
+          />
 
           {/* Tab Switcher */}
           <div className="flex gap-1.5 mt-4 pt-3 border-t border-white/5 overflow-x-auto scrollbar-none">
@@ -800,69 +433,17 @@ export function FieldWorkspace({
         </div>
       </div>
 
-      {/* ========== SMART STAGE RECOMMENDATION CARD ========== */}
-      {smartRec && (
-        <div className="bg-gradient-to-br from-slate-900 via-slate-900 to-emerald-950/20 border border-white/10 rounded-3xl p-5 shadow-2xl space-y-4 animate-in slide-in-from-top-4 duration-300">
-          <div className="flex items-start gap-4">
-            <div className="h-12 w-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-2xl flex-shrink-0">
-              {smartRec.icon}
-            </div>
-            <div className="space-y-1">
-              <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest">
-                العمليات المقترحة للمرحلة الحالية (Stage-Specific Recommendation)
-              </span>
-              <h4 className="text-sm font-bold text-white leading-snug">{smartRec.title}</h4>
-              <p className="text-xs text-slate-300 leading-relaxed font-sans mt-1">{smartRec.desc}</p>
-            </div>
-          </div>
-          <div className="flex justify-end pt-2 border-t border-white/5">
-            <button
-              onClick={() => onLogOperation(field, smartRec.type, smartRec.prefill)}
-              className="px-5 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-black rounded-xl shadow-lg transition-all active:scale-[0.97] flex items-center gap-1.5"
-            >
-              <span>{smartRec.icon}</span>
-              <span>{smartRec.btnText}</span>
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* ========== ASSUMED COMPLIANCE BANNER ========== */}
-      {showComplianceBanner && (
-        <div className="bg-gradient-to-r from-emerald-950/80 via-slate-900/90 to-emerald-950/80 border border-emerald-500/20 rounded-2xl p-4 shadow-xl animate-in slide-in-from-top-4 duration-300 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <span className="text-2xl animate-pulse">💧</span>
-            <div>
-              <h4 className="text-sm font-bold text-white mb-0.5">Mizan Smart Irrigation Sync (التزام الري الذكي)</h4>
-              <p className="text-xs text-slate-300">
-                Nous estimons un besoin d&apos;irrigation de <span className="text-emerald-400 font-extrabold">{recommendedMinutes} min</span> ({recommendedLiters} L) pour aujourd&apos;hui. Avez-vous irrigué ?
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
-            <button
-              onClick={handleAutoLog}
-              disabled={isAutoLogging}
-              className="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-black rounded-xl shadow-md transition-all active:scale-95 whitespace-nowrap flex items-center gap-1.5"
-            >
-              {isAutoLogging ? "Enregistrement..." : "✅ Oui (نعم)"}
-            </button>
-            <button
-              onClick={() => onLogOperation(field, "IRRIGATION")}
-              className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 border border-white/10 text-white text-xs font-bold rounded-xl transition-all active:scale-95 whitespace-nowrap"
-            >
-              ✏️ Modifier (تعديل)
-            </button>
-            <button
-              onClick={() => setIsDismissed(true)}
-              className="p-2 hover:bg-white/5 text-slate-400 hover:text-white rounded-xl transition-all"
-              title="Ignorer / تجاهل"
-            >
-              ✕
-            </button>
-          </div>
-        </div>
-      )}
+      <SmartRecommendationCard
+        smartRec={smartRec}
+        showComplianceBanner={showComplianceBanner}
+        recommendedMinutes={recommendedMinutes}
+        recommendedLiters={recommendedLiters}
+        isAutoLogging={isAutoLogging}
+        handleAutoLog={handleAutoLog}
+        onLogOperation={onLogOperation}
+        onSetIsDismissed={setIsDismissed}
+        field={field}
+      />
 
       {/* Tab Panels */}
       <div className="bg-slate-900/40 border border-white/10 rounded-3xl p-6 backdrop-blur-sm min-h-[300px] shadow-xl">
@@ -963,96 +544,7 @@ export function FieldWorkspace({
         )}
       </div>
 
-      {/* Spectral Index Educational Guide Modal */}
-      {showIndexGuide && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in">
-          <div className="bg-slate-900 border border-emerald-500/30 rounded-3xl max-w-2xl w-full p-6 shadow-2xl space-y-5 text-right relative overflow-hidden">
-            <div className="flex items-center justify-between border-b border-white/10 pb-4">
-              <button
-                onClick={() => setShowIndexGuide(false)}
-                className="text-slate-400 hover:text-white bg-slate-800 p-1.5 rounded-full transition-all"
-              >
-                ✕
-              </button>
-              <div className="flex items-center gap-2">
-                <h3 className="text-lg font-bold text-white">📖 دليل المؤشرات الفضائية والاستشعار عن بعد</h3>
-                <span className="text-xl">🛰️</span>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-              <div className="bg-slate-950/70 border border-emerald-500/20 p-3.5 rounded-2xl space-y-1">
-                <h4 className="font-bold text-emerald-400 text-sm flex items-center justify-end gap-1.5">
-                  <span>كثافة الأشجار (% Cover)</span>
-                  <span>🌳</span>
-                </h4>
-                <p className="text-slate-300 text-[11px] leading-relaxed">
-                  المعيار التراكمي المباشر لحجم المساحة الخضراء التي تصنعها غصون الأشجار بالنسبة لمساحة الحقل الكلية، مصفاة 100% من أثر التبن والتربة.
-                </p>
-              </div>
-
-              <div className="bg-slate-950/70 border border-emerald-500/20 p-3.5 rounded-2xl space-y-1">
-                <h4 className="font-bold text-emerald-400 text-sm flex items-center justify-end gap-1.5">
-                  <span>صحة الأشجار (SAVI)</span>
-                  <span>🌿</span>
-                </h4>
-                <p className="text-slate-300 text-[11px] leading-relaxed">
-                  المعيار الذهبي المعتمد لبساتين الزيتون؛ لأنه يحيد أثر لون التربة الكلسية أو الحصوية ويقيس النشاط الخضري الحقيقي للأوراق.
-                </p>
-              </div>
-
-              <div className="bg-slate-950/70 border border-teal-500/20 p-3.5 rounded-2xl space-y-1">
-                <h4 className="font-bold text-teal-400 text-sm flex items-center justify-end gap-1.5">
-                  <span>الغطاء النباتي (NDVI)</span>
-                  <span>🌱</span>
-                </h4>
-                <p className="text-slate-300 text-[11px] leading-relaxed">
-                  يقيس كثافة البناء الضوئي الإجمالية وكمية الخضرة. يمثل الصورة الشاملة لنشاط النباتات والكتلة الحيوية.
-                </p>
-              </div>
-
-              <div className="bg-slate-950/70 border border-blue-500/20 p-3.5 rounded-2xl space-y-1">
-                <h4 className="font-bold text-blue-400 text-sm flex items-center justify-end gap-1.5">
-                  <span>الإجهاد المائي (NDWI)</span>
-                  <span>💧</span>
-                </h4>
-                <p className="text-slate-300 text-[11px] leading-relaxed">
-                  يقيس المحتوى المائي الداخلي لخلايا الورقة ويكشف نقص الماء والإجهاد الهيدروليكي قبل ظهور أعراض الذبول بالعين المجردة بـ 5 أيام.
-                </p>
-              </div>
-
-              <div className="bg-slate-950/70 border border-amber-500/20 p-3.5 rounded-2xl space-y-1">
-                <h4 className="font-bold text-amber-400 text-sm flex items-center justify-end gap-1.5">
-                  <span>مؤشر التبن والقش (NDTI)</span>
-                  <span>🌾</span>
-                </h4>
-                <p className="text-slate-300 text-[11px] leading-relaxed">
-                  يستغل الأشعة تحت الحمراء القصيرة (SWIR2) لكشف بصمة السليولوز والتبن الجاف بعد حصاد القمح، ويمنع الإيجابيات الكاذبة.
-                </p>
-              </div>
-
-              <div className="bg-slate-950/70 border border-red-500/20 p-3.5 rounded-2xl space-y-1">
-                <h4 className="font-bold text-red-400 text-sm flex items-center justify-end gap-1.5">
-                  <span>حافة الكلوروفيل (NDRE)</span>
-                  <span>🔴</span>
-                </h4>
-                <p className="text-slate-300 text-[11px] leading-relaxed">
-                  يقيس القفزة الطيفية للكلوروفيل عند الطول الموجي 705nm، مما يضمن كشف الأشجار الفتية ذات العرش الصغير ودون إسقاطها.
-                </p>
-              </div>
-            </div>
-
-            <div className="pt-2 text-center">
-              <button
-                onClick={() => setShowIndexGuide(false)}
-                className="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold px-6 py-2 rounded-xl text-xs transition-all shadow-lg"
-              >
-                فهمت ذلك / إغلاق
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <SpectralIndexGuide isOpen={showIndexGuide} onClose={() => setShowIndexGuide(false)} />
     </div>
   );
 }
