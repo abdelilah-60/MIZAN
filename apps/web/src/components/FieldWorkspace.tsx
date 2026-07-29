@@ -11,7 +11,7 @@ import { WeatherPanel } from "./WeatherPanel";
 import { InsightsPanel } from "./InsightsPanel";
 import { OperationsPanel } from "./OperationsPanel";
 import { AgronomyPanel } from "./AgronomyPanel";
-import { formatDate, cleanParenthesesName } from "../lib/utils";
+import { formatDate } from "../lib/utils";
 import { SatelliteMapCanvas } from "./SatelliteMapCanvas";
 import { SpectralLayerSwitcher } from "./SpectralLayerSwitcher";
 import { DigitalTwinKPIs } from "./DigitalTwinKPIs";
@@ -47,7 +47,7 @@ type WorkspaceTab = "agronomy" | "insights" | "operations";
 
 export function FieldWorkspace({
   field,
-  farms,
+  farms: _farms,
   weatherData,
   insightsData,
   operationsData,
@@ -101,7 +101,6 @@ export function FieldWorkspace({
     }
   }, [field]);
 
-  const farm = farms.find((f) => f.id === field.farmId);
   const summary = field.seasonSummary?.[0];
 
   // Stage label
@@ -328,7 +327,6 @@ export function FieldWorkspace({
             satelliteData={satelliteData}
             loadingSatellite={loadingSatellite}
             onClose={onClose}
-            onShowGuide={() => setShowIndexGuide(true)}
           />
 
           {/* Floating Stage Stats Badge on Map Canvas */}
@@ -359,8 +357,6 @@ export function FieldWorkspace({
                   </span>
                 </h2>
                 <p className="text-xs text-slate-400 font-medium mt-1 flex items-center gap-2 flex-wrap">
-                  <span>🏡 {cleanParenthesesName(farm?.name, true) || "ضيعة ميزان"}</span>
-                  <span>&bull;</span>
                   <span>📐 {field.area} ha</span>
                   {field.plantingDate && (
                     <>
