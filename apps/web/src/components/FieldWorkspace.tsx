@@ -132,11 +132,11 @@ export function FieldWorkspace({
     switch (stage) {
       case "DORMANCE":
         return {
-          title: "❄️ مرحلة السكون الشتوي",
-          desc: `يُنصح ببدء التسميد العضوي لتغذية التربة وتحسين بنية الحقل وإمداد أشجار (${cropName}) بالمادة العضوية المجهزة قبل خروج العين.`,
+          title: "❄️ Dormance (السكون الشتوي)",
+          desc: `يُنصح ببدء التسميد العضوي (Amendement Organique) لتغذية التربة وتحسين بنية الحقل وإمداد أشجار (${cropName}) بالمادة العضوية المجهزة قبل خروج العين.`,
           type: "ORGANIC_AMENDMENT",
           icon: "🍂",
-          btnText: "تطبيق التسميد العضوي",
+          btnText: "Appliquer l'amendement (تطبيق التسميد العضوي)",
           prefill: {
             fertilizerType: "BOVINE",
             state: "DECOMPOSED",
@@ -146,11 +146,11 @@ export function FieldWorkspace({
         };
       case "DEBOURREMENT":
         return {
-          title: "🌱 مرحلة خروج البراعم الربيعية",
+          title: "🌱 Débourrement (خروج البراعم)",
           desc: `هذه هي بداية النمو الخضري النشط للصنف (${cropName}). يُنصح بإضافة الدفعة الربيعية الأولى: ${npk?.n || 31} كجم/هكتار من الآزوت لدعم النموات الجديدة وتجهيز الأغصان الفتية.`,
           type: "FERTILIZER",
           icon: "🧪",
-          btnText: "تطبيق جرعة الآزوت الموصى بها",
+          btnText: "Appliquer l'Azote (تطبيق الآزوت)",
           prefill: {
             fertilizerType: "NPK",
             quantity: String(npk?.n || 31),
@@ -162,11 +162,11 @@ export function FieldWorkspace({
         };
       case "FLORAISON":
         return {
-          title: "🌸 مرحلة الإزهار",
+          title: "🌸 Floraison (الإزهار)",
           desc: `لتجنب تساقط الأزهار والحفاظ على الحمل للصنف (${cropName})، يجب خفض الري الزائد والامتناع عن التسميد النيتروجيني المفرط. التوصية الحالية هي رش الفوسفات والبورون الورقي لدعم التلقيح.`,
           type: "FERTILIZER",
           icon: "🌸",
-          btnText: "تطبيق جرعة الفوسفات",
+          btnText: "Appliquer le Phosphate (تطبيق الفوسفات)",
           prefill: {
             fertilizerType: "NPK",
             quantity: String(npk?.p || 10),
@@ -178,11 +178,11 @@ export function FieldWorkspace({
         };
       case "NOUAISON":
         return {
-          title: "👶 مرحلة عقد الثمار الفتية",
+          title: "👶 Nouaison (عقد الثمار)",
           desc: `الثمار الفتية للصنف (${cropName}) تبدأ في النمو وتتطلب الآزوت المتوازن. يوصى بإضافة الجرعة الصافية الثانية: ${Math.round((npk?.n || 30) * 0.35)} كجم/هكتار لدعم العقد وتخفيف تساقط الثمار الفتية.`,
           type: "FERTILIZER",
           icon: "👶",
-          btnText: "تطبيق دفعة العقد الموصى بها",
+          btnText: "Appliquer la dose de nouaison (تطبيق دفعة العقد)",
           prefill: {
             fertilizerType: "NPK",
             quantity: String(Math.round((npk?.n || 30) * 0.35)),
@@ -194,11 +194,11 @@ export function FieldWorkspace({
         };
       case "CROISSANCE":
         return {
-          title: "📈 مرحلة نمو وتصلب النواة",
+          title: "📈 Croissance & Durcissement (نمو وتصلب النواة)",
           desc: `هذه هي أهم فترة لتراكم الزيت وامتلاء الثمار في الزيتون (${cropName}). يُنصح بإضافة الدفعة الربيعية/الصيفية الأساسية للبوتاسيوم: ${npk?.k || 40} كجم/هكتار لدعم حجم وجودة الحبة.`,
           type: "FERTILIZER",
           icon: "📈",
-          btnText: "تطبيق جرعة البوتاسيوم",
+          btnText: "Appliquer le Potassium (تطبيق البوتاسيوم)",
           prefill: {
             fertilizerType: "NPK",
             quantity: String(npk?.k || 40),
@@ -210,11 +210,11 @@ export function FieldWorkspace({
         };
       case "VERAISON":
         return {
-          title: "🎨 مرحلة تلوين الثمرة وبداية النضج",
+          title: "🎨 Véraison (تلوين الثمرة والنضج)",
           desc: `ثمار الصنف (${cropName}) تبدأ بتغيير اللون. يُنصح بمراقبة ذبابة الزيتون لحماية المحصول، والتوقف التام عن التسميد الكيميائي تمهيداً للجني.`,
           type: "PESTICIDE",
           icon: "🛡️",
-          btnText: "تسجيل المعالجة الوقائية لحماية الثمار",
+          btnText: "Traitement de protection (تسجيل حماية الثمار)",
           prefill: {
             activeIngredient: "DELTAMETHRINE",
             targetPest: "FLY",
@@ -225,11 +225,11 @@ export function FieldWorkspace({
         };
       case "RECOLTE":
         return {
-          title: "🫒 مرحلة الجني والحصاد",
+          title: "🫒 Récolte (الجني والحصاد)",
           desc: `حان موعد قطف حبات الصنف (${cropName}) للوجهة الموصى بها. يوصى بالجني اليدوي أو الهزازات اللطيفة لتجنب كسر وجرح الأغصان المنتجة للعام القادم.`,
           type: "HARVEST",
           icon: "🫒",
-          btnText: "تسجيل عملية الجني",
+          btnText: "Enregistrer la récolte (تسجيل الجني)",
           prefill: {
             method: "MANUAL",
             quantity: "2500",

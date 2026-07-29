@@ -1,127 +1,127 @@
 {
   "common": {
-    "appTitle": "Plateforme Agricole Mizan",
-    "subTitle": "Télédétection & Gestion des Exploitations par IA",
-    "searchPlaceholder": "Rechercher une parcelle, variété ou ferme...",
-    "close": "Fermer",
-    "save": "Enregistrer les modifications",
-    "cancel": "Annuler",
-    "delete": "Supprimer",
-    "edit": "Modifier",
-    "confirm": "Confirmer",
-    "loading": "Chargement...",
-    "success": "Opération réussie",
-    "error": "Une erreur est survenue",
-    "ha": "ha",
-    "liters": "L",
-    "minutes": "min",
-    "kg": "kg",
-    "yes": "Oui",
-    "ignore": "Ignorer",
-    "back": "Retour",
-    "farm": "Ferme"
+    "appTitle": "Mizan AgTech (منصة ميزان الفلاحية الذكية)",
+    "subTitle": "Télédétection & Gestion par IA (الاستشعار عن بعد والذكاء الاصطناعي)",
+    "searchPlaceholder": "Rechercher parcelle, variété... (ابحث عن حقل أو صنف)",
+    "close": "Fermer (إغلاق)",
+    "save": "Enregistrer (حفظ التغيرات)",
+    "cancel": "Annuler (إلغاء)",
+    "delete": "Supprimer (حذف)",
+    "edit": "Modifier (تعديل)",
+    "confirm": "Confirmer (تأكيد)",
+    "loading": "Chargement... (جاري التحميل)",
+    "success": "Succès (تمت العملية بنجاح)",
+    "error": "Erreur (حدث خطأ)",
+    "ha": "ha (هكتار)",
+    "liters": "L (لتر)",
+    "minutes": "min (دقيقة)",
+    "kg": "kg (كجم)",
+    "yes": "Oui (نعم)",
+    "ignore": "Ignorer (تجاهل)",
+    "back": "Retour (عودة)",
+    "farm": "Ferme (ضيعة)"
   },
   "nav": {
-    "feed": "Fil d'actualité & Exploitation",
-    "analytics": "Tableau de bord & Analyses",
-    "knowledge": "Base de Connaissances",
-    "profile": "Profil Utilisateur",
-    "createField": "Nouvelle Parcelle",
-    "logout": "Déconnexion"
+    "feed": "Fil d'actualité (الرئيسية والمستغلة)",
+    "analytics": "Tableau de bord (التحليلات البيانية)",
+    "knowledge": "Base de Connaissances (قاعدة المعرفة)",
+    "profile": "Profil (الملف الشخصي)",
+    "createField": "Créer une Parcelle (إضافة حقل جديد)",
+    "logout": "Déconnexion (تسجيل الخروج)"
   },
   "grid": {
-    "phenologyGdd": "Progression Phénologique & Cumul Thermique",
-    "liveWeather": "Conditions Météo en Direct",
-    "chillingHours": "Heures de Froid",
-    "gddAccumulated": "Cumul Thermique GDD",
-    "temperature": "Température",
-    "humidity": "Humidité",
-    "windSpeed": "Vent",
-    "precipitation": "Précipitations",
-    "plantedDate": "Plantation"
+    "phenologyGdd": "Progression Phénologique & GDD (المراحل الفينولوجية والتراكم الحراري)",
+    "liveWeather": "Climat en direct (حالة الطقس المباشرة)",
+    "chillingHours": "Heures de Froid (ساعات البرودة)",
+    "gddAccumulated": "Cumul Thermique GDD (التراكم الحراري)",
+    "temperature": "Température (الحرارة)",
+    "humidity": "Humidité (الرطوبة)",
+    "windSpeed": "Vent (الرياح)",
+    "precipitation": "Précipitations (التساقطات)",
+    "plantedDate": "Plantation (تاريخ الغرس)"
   },
   "workspace": {
     "tabs": {
-      "agronomy": "💧 Recommandations & Irrigation",
-      "insights": "🧠 Santé & Risques Phytosanitaires",
-      "operations": "📋 Journal des Activités & Météo"
+      "agronomy": "💧 Recommandations & Irrigation (التوصيات والري)",
+      "insights": "🧠 Santé & Risques (صحة الحقل والوقاية)",
+      "operations": "📋 Journal des Activités (سجل العمليات والطقس)"
     },
     "kpis": {
-      "overallHealth": "Santé Globale",
-      "canopyCover": "Couverture Canopée (fCOVER)",
-      "gddStage": "Stade Phénologique (GDD)",
-      "hydricStress": "Stress Hydrique (NDWI)"
+      "overallHealth": "Santé Globale (الصحة الإجمالية)",
+      "canopyCover": "Couverture Canopée fCOVER (كثافة العرش)",
+      "gddStage": "Stade Phénologique GDD (المرحلة الفينولوجية)",
+      "hydricStress": "Stress Hydrique NDWI (الإجهاد المائي)"
     },
     "actions": {
-      "pdfReport": "Rapport Saisonner (PDF)",
-      "indexGuide": "Guide des Indices Spectraux",
-      "applyDose": "Appliquer la Dose Recommandée",
-      "logIrrigation": "Valider l'Irrigation du Jour",
-      "editIrrigation": "Ajuster l'Irrigation"
+      "pdfReport": "Rapport PDF (التقرير الموسمي)",
+      "indexGuide": "Guide des Indices (دليل المؤشرات)",
+      "applyDose": "Appliquer la dose (تطبيق الجرعة)",
+      "logIrrigation": "Valider l'irrigation (تأكيد الري)",
+      "editIrrigation": "Ajuster l'irrigation (تعديل الري)"
     },
     "advice": {
-      "sentinelTitle": "Analyse Spectrale Spatiale (Sentinel-2A • 10m)",
-      "bareSoil": "Sol nu / Jachère sans canopée d'arbres. Recommandations d'amendement adaptées.",
-      "denseCanopy": "Canopée dense et homogène en excellente santé végétale.",
-      "balancedCanopy": "Canopée équilibrée conforme au développement végétatif."
+      "sentinelTitle": "Analyse Spectrale Spatiale Sentinel-2A (التحليل الطيفي الفضائي)",
+      "bareSoil": "Sol nu / Jachère (أرض بور بدون غطاء أشجار حية)",
+      "denseCanopy": "Canopée dense et homogène (غطاء شجري كثيف ومتجانس)",
+      "balancedCanopy": "Canopée équilibrée (غطاء شجري متوازن)"
     }
   },
   "phenology": {
-    "DORMANCE": "Dormance Hivernale",
-    "DEBOURREMENT": "Débourrement des Bourgeons",
-    "FLORAISON": "Floraison",
-    "NOUAISON": "Nouaison des Fruits",
-    "CROISSANCE": "Durcissement du Noyau & Grossissement",
-    "VERAISON": "Véraison & Maturation",
-    "RECOLTE": "Récolte"
+    "DORMANCE": "❄️ Dormance (السكون الشتوي)",
+    "DEBOURREMENT": "🌱 Débourrement (خروج البراعم)",
+    "FLORAISON": "🌸 Floraison (الإزهار)",
+    "NOUAISON": "👶 Nouaison (عقد الثمار)",
+    "CROISSANCE": "📈 Croissance (نمو وتصلب النواة)",
+    "VERAISON": "🎨 Véraison (تلوين الثمرة والنضج)",
+    "RECOLTE": "🫒 Récolte (الجني والحصاد)"
   },
   "diseases": {
-    "peacockSpot": "Oeil de Paon",
-    "verticillium": "Verticilliose",
-    "oliveFly": "Mouche de l'Olive",
-    "moth": "Teigne de l'Olive",
-    "scale": "Cochenille Noire",
-    "anthracnose": "Anthracnose"
+    "peacockSpot": "🦚 Oeil de Paon (عين الطاووس)",
+    "verticillium": "🌱 Verticilliose (الذبول الفرتيسيليومي)",
+    "oliveFly": "🪰 Mouche de l'Olive (ذبابة الزيتون)",
+    "moth": "🦋 Teigne de l'Olive (عثة الزيتون)",
+    "scale": "🐜 Cochenille Noire (الحشرة القشرية السوداء)",
+    "anthracnose": "🍂 Anthracnose (الأنثراكنوز / تعفن الثمار)"
   },
   "spectral": {
-    "natural": "Naturel",
-    "canopy": "Canopée (% Cover)",
-    "savi": "Santé SAVI",
-    "ndvi": "Végétation NDVI",
-    "ndwi": "Stress Hydrique NDWI",
-    "ndre": "Red Edge NDRE",
-    "ndti": "Résidus NDTI"
+    "natural": "Naturel (طبيعي)",
+    "canopy": "Canopée % Cover (كثافة الأشجار)",
+    "savi": "Santé SAVI (صحة الأشجار)",
+    "ndvi": "Végétation NDVI (الغطاء النباتي)",
+    "ndwi": "Stress NDWI (الإجهاد المائي)",
+    "ndre": "Red Edge NDRE (حافة الكلوروفيل)",
+    "ndti": "Résidus NDTI (مؤشر التبن والقش)"
   },
   "operations": {
-    "IRRIGATION": "Irrigation",
-    "FERTILIZER": "Fertilisation",
-    "PESTICIDE": "Traitement Phytosanitaire",
-    "HARVEST": "Récolte",
-    "PRUNING": "Taille",
-    "TILLAGE": "Labour",
-    "ORGANIC_AMENDMENT": "Amendement Organique"
+    "IRRIGATION": "💧 Irrigation (الري)",
+    "FERTILIZER": "🧪 Fertilisation (التسميد الكيميائي)",
+    "PESTICIDE": "🛡️ Traitement (المعالجة الوقائية)",
+    "HARVEST": "🫒 Récolte (الجني والحصاد)",
+    "PRUNING": "✂️ Taille (التقليم)",
+    "TILLAGE": "🚜 Labour (الحراثة وتهوية التربة)",
+    "ORGANIC_AMENDMENT": "🍂 Amendement Organique (التسميد العضوي)"
   },
   "agronomy": {
-    "smartIrrigation": "Calculs d'Irrigation Recommandés",
-    "nitrogen": "Azote (N)",
-    "phosphorus": "Phosphore (P₂O₅)",
-    "potassium": "Potassium (K₂O)",
-    "biologicalCeiling": "Plafond Biologique Max",
-    "dripperFlow": "Débit du Goutteur",
-    "treeDensity": "Densité de Plantation",
-    "soilAnalysis": "Analyse Physico-Chimique du Sol",
-    "ph": "pH du Sol",
-    "organicMatter": "Matière Organique"
+    "smartIrrigation": "Irrigation Intelligente (حسابات الري الذكي)",
+    "nitrogen": "Azote N (الآزوت)",
+    "phosphorus": "Phosphore P₂O₅ (الفوسفور)",
+    "potassium": "Potassium K₂O (البوتاسيوم)",
+    "biologicalCeiling": "Plafond Biologique (السقف البيولوجي الأقصى)",
+    "dripperFlow": "Débit du Goutteur (تدفق القطارة)",
+    "treeDensity": "Densité de Plantation (كثافة الأشجار)",
+    "soilAnalysis": "Analyse du Sol (تحليل عناصر التربة)",
+    "ph": "pH du Sol (درجة الحموضة)",
+    "organicMatter": "Matière Organique (المادة العضوية)"
   },
   "modal": {
-    "logOperation": "Enregistrer une Nouvelle Intervention",
-    "saveOperation": "Valider l'Intervention",
-    "type": "Type d'Intervention",
-    "date": "Date de Réalisation",
-    "quantity": "Quantité",
-    "productName": "Nom du Produit / Engrais",
-    "technique": "Technique Utilisée",
-    "volume": "Volume d'Eau",
-    "duration": "Durée d'Irrigation"
+    "logOperation": "Enregistrer une Intervention (تسجيل عملية جديدة)",
+    "saveOperation": "Valider l'Intervention (تأكيد تسجيل العملية)",
+    "type": "Type d'Intervention (نوع التدخل)",
+    "date": "Date de Réalisation (تاريخ التنفيذ)",
+    "quantity": "Quantité (الكمية)",
+    "productName": "Nom du Produit (اسم المنتج / السماد)",
+    "technique": "Technique (التقنية المستعملة)",
+    "volume": "Volume d'Eau (حجم المياه)",
+    "duration": "Durée (مدة الري)"
   }
 }
