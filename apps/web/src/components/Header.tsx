@@ -1,4 +1,5 @@
 import type { User, HealthStatus, ActiveTab } from "../lib/types";
+import { NotificationCenter } from "./NotificationCenter";
 
 interface HeaderProps {
   user: User | null;
@@ -99,18 +100,7 @@ export function Header({
           )}
 
           {/* Interactive Notification Bell */}
-          <button
-            type="button"
-            className="h-8 w-8 rounded-full bg-slate-900 hover:bg-slate-800 border border-white/5 flex items-center justify-center text-xs text-slate-400 hover:text-white relative transition-colors"
-            title="Notifications"
-          >
-            <span>🔔</span>
-            {health?.db === "connected" && (
-              <span className="absolute -top-1 -right-1 h-3.5 w-3.5 bg-red-500 text-[8px] text-white font-bold rounded-full flex items-center justify-center border border-slate-950">
-                2
-              </span>
-            )}
-          </button>
+          <NotificationCenter />
 
           {/* User Block & Logout */}
           <div className="flex items-center gap-3 border-l border-white/10 pl-3">

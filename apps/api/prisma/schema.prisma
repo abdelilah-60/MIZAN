@@ -19,7 +19,8 @@ model User {
   role        String   @default("USER")
   createdAt   DateTime @default(now())
 
-  farms Farm[]
+  farms         Farm[]
+  notifications Notification[]
 }
 
 model Farm {
@@ -189,4 +190,20 @@ model SatelliteSnapshot {
   
   @@unique([fieldId, captureDate])
   @@index([fieldId])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String   // "DISEASE_RISK" | "IRRIGATION_DUE" | "STAGE_CHANGE" | "FROST_ALERT"
+  title     String
+  body      String
+  priority  String   @default("NORMAL") // "LOW" | "NORMAL" | "HIGH" | "CRITICAL"
+  isRead    Boolean  @default(false)
+  metadata  Json?
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@index([userId, isRead])
 }

@@ -16,6 +16,7 @@ import agronomyRoute from "./routes/agronomy";
 import adminRoute from "./routes/admin";
 import satelliteRoute from "./routes/satellite";
 import { reportsRoute } from "./routes/reports";
+import { notificationsRoute } from "./routes/notifications";
 
 const app = new Hono();
 
@@ -58,6 +59,7 @@ protectedApi.route("/agronomy", agronomyRoute);
 protectedApi.route("/admin", adminRoute);
 protectedApi.route("/satellite", satelliteRoute);
 protectedApi.route("/reports", reportsRoute);
+protectedApi.route("/notifications", notificationsRoute);
 
 // 3. MOUNT PROTECTED ZONE TO MAIN APP
 app.route("/api", protectedApi);
