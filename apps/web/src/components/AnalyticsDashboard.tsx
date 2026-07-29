@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import {
   ResponsiveContainer,
   AreaChart,
@@ -30,6 +31,7 @@ export function AnalyticsDashboard({
   operationsData = [],
   token,
 }: AnalyticsDashboardProps) {
+  const { t } = useTranslation();
   const [selectedFieldId, setSelectedFieldId] = useState<string>(
     fields[0]?.id || ""
   );
@@ -102,12 +104,12 @@ export function AnalyticsDashboard({
     });
 
     const labels: Record<string, { label: string; color: string }> = {
-      IRRIGATION: { label: "ري (Irrigation)", color: "#3b82f6" },
-      FERTILIZER: { label: "تسميد (Fertilisation)", color: "#10b981" },
-      PESTICIDE: { label: "معالجة (Pesticide)", color: "#a855f7" },
-      HARVEST: { label: "جني (Récolte)", color: "#f59e0b" },
-      PRUNING: { label: "تقليم (Taille)", color: "#06b6d4" },
-      TILLAGE: { label: "حرث (Labour)", color: "#64748b" },
+      IRRIGATION: { label: t("operations.IRRIGATION"), color: "#3b82f6" },
+      FERTILIZER: { label: t("operations.FERTILIZER"), color: "#10b981" },
+      PESTICIDE: { label: t("operations.PESTICIDE"), color: "#a855f7" },
+      HARVEST: { label: t("operations.HARVEST"), color: "#f59e0b" },
+      PRUNING: { label: t("operations.PRUNING"), color: "#06b6d4" },
+      TILLAGE: { label: t("operations.TILLAGE"), color: "#64748b" },
     };
 
     return Object.keys(counts)

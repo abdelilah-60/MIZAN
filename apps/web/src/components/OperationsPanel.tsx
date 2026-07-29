@@ -77,49 +77,49 @@ export const OperationsPanel = React.memo(function OperationsPanel({
                           </>
                         ) : op.type === "ORGANIC_AMENDMENT" ? (
                           <>
-                            🍂 Amendement ({meta.fertilizerType}):{" "}
-                            <span className="text-amber-400">{meta.state === "DECOMPOSED" ? "Maturé/متحلل" : "Frais/خام"}</span> —{" "}
+                            🍂 تسميد عضوي ({meta.fertilizerType}):{" "}
+                            <span className="text-amber-400">{meta.state === "DECOMPOSED" ? "متحلل متخمر" : "طازج خام"}</span> —{" "}
                             <span className="text-emerald-400 font-mono">{meta.quantity} {meta.unit}</span>
                           </>
                         ) : (op.type === "PESTICIDE" || op.type === "FUNGICIDE") ? (
                           <>
-                            {op.type === "PESTICIDE" ? "🛡️" : "🔬"} Traitement ({meta.activeIngredient}):{" "}
+                            {op.type === "PESTICIDE" ? "🛡️" : "🔬"} معالجة وقائية ({meta.activeIngredient}):{" "}
                             <span className="text-amber-400">{meta.targetPest}</span> —{" "}
                             <span className="text-emerald-400 font-mono">{meta.quantity} {meta.unit}</span>
                           </>
                         ) : op.type === "PRUNING" ? (
                           <>
-                            ✂️ Taille ({meta.technique}):{" "}
+                            ✂️ تقليم الأشجار ({meta.technique}):{" "}
                             <span className="text-purple-400">{meta.intensityLevel}</span>
                           </>
                         ) : op.type === "TILLAGE" ? (
                           <>
-                            🚜 Travail du sol:{" "}
+                            🚜 حرث وتهوية التربة:{" "}
                             <span className="text-blue-400">{meta.technique}</span> —{" "}
                             <span className="text-slate-400">{meta.depth}</span>
                           </>
                         ) : op.type === "WEEDING" ? (
                           <>
-                            🌿 Désherbage ({meta.method === "CHEMICAL" ? "Chimique" : "Mécanique"}):{" "}
+                            🌿 إزالة الأعشاب ({meta.method === "CHEMICAL" ? "كيميائي" : "ميكانيكي"}):{" "}
                             {meta.method === "CHEMICAL" ? (
                               <>
                                 <span className="text-amber-400">{meta.activeIngredient}</span> —{" "}
                                 <span className="text-emerald-400 font-mono">{meta.quantity} {meta.unit}</span>
                               </>
                             ) : (
-                              <span className="text-slate-400">Girobroyeur</span>
+                              <span className="text-slate-400">قطع بالآلة (Girobroyeur)</span>
                             )}
                           </>
                         ) : op.type === "HARVEST" ? (
                           <>
-                            🫒 Récolte ({meta.method}):{" "}
-                            <span className="text-emerald-400 font-mono">{meta.quantity} Kg</span>{" "}
+                            🫒 جني المحصول ({meta.method}):{" "}
+                            <span className="text-emerald-400 font-mono">{meta.quantity} كجم</span>{" "}
                             <span className="text-slate-400 text-xs font-mono ml-1">
-                              ({meta.yield_per_tree_kg || 0} kg/ar - {((meta.yield_per_hectare_kg || 0)/1000).toFixed(2)} t/ha)
+                              ({meta.yield_per_tree_kg || 0} كجم/شجرة - {((meta.yield_per_hectare_kg || 0)/1000).toFixed(2)} طن/هكتار)
                             </span>
                           </>
                         ) : (
-                          meta.note || "Aucune métadonnée"
+                          meta.note || "لا توجد تفاصيل إضافية"
                         )}
                       </div>
                       <button

@@ -17,7 +17,7 @@ export const PesticideFormSection: React.FC<PesticideFormSectionProps> = React.m
     <div className="space-y-4">
       <div className="space-y-1">
         <label className="text-xs text-slate-400 ml-1">
-          {type === "PESTICIDE" ? "Target Pest / الآفة المستهدفة" : "Target Disease / المرض المستهدف"}
+          {type === "PESTICIDE" ? "الآفة المستهدفة" : "المرض المستهدف"}
         </label>
         <select
           className="w-full bg-slate-800 border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all text-white"
@@ -26,23 +26,23 @@ export const PesticideFormSection: React.FC<PesticideFormSectionProps> = React.m
         >
           {type === "PESTICIDE" ? (
             <>
-              <option value="FLY">Mouche de l&apos;olive (ذبابة الزيتون)</option>
-              <option value="MOTH">Teigne de l&apos;olive (عثة الزيتون)</option>
-              <option value="SCALE">Cochenille noire (الحشرة القشرية السوداء)</option>
-              <option value="PSYLLA">Psylle de l&apos;olive (بسيلا الزيتون)</option>
+              <option value="FLY">ذبابة الزيتون</option>
+              <option value="MOTH">عثة الزيتون</option>
+              <option value="SCALE">الحشرة القشرية السوداء</option>
+              <option value="PSYLLA">بسيلا الزيتون</option>
             </>
           ) : (
             <>
-              <option value="PEACOCK">Oeil de paon (عين الطاووس)</option>
-              <option value="ANTHRACNOSE">Anthracnose (الأنثراكنوز)</option>
-              <option value="VERTICILLIUM">Verticilliose (الذبول الفرتيسيليومي)</option>
+              <option value="PEACOCK">مرض عين الطاووس</option>
+              <option value="ANTHRACNOSE">الأنثراكنوز (تعفن الثمار)</option>
+              <option value="VERTICILLIUM">الذبول الفرتيسيليومي</option>
             </>
           )}
         </select>
       </div>
 
       <div className="space-y-1">
-        <label className="text-xs text-slate-400 ml-1">Matière Active / المادة الفعالة</label>
+        <label className="text-xs text-slate-400 ml-1">المادة الفعالة</label>
         <select
           className="w-full bg-slate-800 border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all text-white"
           value={metadata.activeIngredient || (type === "PESTICIDE" ? "DELTAMETHRINE" : "CUIVRE")}
@@ -63,16 +63,16 @@ export const PesticideFormSection: React.FC<PesticideFormSectionProps> = React.m
         >
           {type === "PESTICIDE" ? (
             <>
-              <option value="DELTAMETHRINE">Deltaméthrine (دلتامثرين)</option>
-              <option value="DIMETHOATE">Diméthoate (diméthoate)</option>
-              <option value="LAMBDA_CYHALOTHRINE">Lambda-cyhalothrine (لامبدا سيهالوثرين)</option>
-              <option value="SPINOSAD">Spinosad (سبينوساد)</option>
+              <option value="DELTAMETHRINE">دلتامثرين (Deltaméthrine)</option>
+              <option value="DIMETHOATE">ديميثوات (Diméthoate)</option>
+              <option value="LAMBDA_CYHALOTHRINE">لامبدا سيهالوثرين (Lambda-cyhalothrine)</option>
+              <option value="SPINOSAD">سبينوساد (Spinosad Bio)</option>
             </>
           ) : (
             <>
-              <option value="CUIVRE">Cuivre (النحاس)</option>
-              <option value="DODINE">Dodine (دودين)</option>
-              <option value="TEBUCONAZOLE">Tébuconazole (تيبوكونازول)</option>
+              <option value="CUIVRE">هيدروكسيد النحاس (Cuivre / Bouillie Bordelaise)</option>
+              <option value="DODINE">دودين (Dodine)</option>
+              <option value="TEBUCONAZOLE">تيبوكونازول (Tébuconazole)</option>
             </>
           )}
         </select>

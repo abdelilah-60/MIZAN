@@ -75,15 +75,15 @@ export function LogOperationModal({
               onChange={(e) => onLogFormChange({ ...logForm, type: e.target.value })}
               aria-label="Type d'Opération"
             >
-              <option value="IRRIGATION">💧 Irrigation</option>
-              <option value="FERTILIZER">🧪 Fertilisation (Minérale)</option>
-              <option value="ORGANIC_AMENDMENT">🍂 Amendement Organique (التسميد العضوي)</option>
-              <option value="PRUNING">✂️ Taille</option>
-              <option value="TILLAGE">🚜 Travail du sol (الحراثة)</option>
-              <option value="PESTICIDE">🛡️ Pesticide</option>
-              <option value="FUNGICIDE">🔬 Fongicide</option>
-              <option value="WEEDING">🌿 Désherbage (إزالة الأعشاب)</option>
-              <option value="HARVEST">🫒 Récolte</option>
+              <option value="IRRIGATION">💧 ري الحقل</option>
+              <option value="FERTILIZER">🧪 تسميد كيميائي معدني</option>
+              <option value="ORGANIC_AMENDMENT">🍂 تسميد عضوي متخمر</option>
+              <option value="PRUNING">✂️ تقليم وتجميل الأشجار</option>
+              <option value="TILLAGE">🚜 حرث وتهوية التربة</option>
+              <option value="PESTICIDE">🛡️ معالجة وقائية من الآفات</option>
+              <option value="FUNGICIDE">🔬 معالجة الفطريات والأمراض</option>
+              <option value="WEEDING">🌿 إزالة الأعشاب الضارة</option>
+              <option value="HARVEST">🫒 جني المحصول</option>
             </select>
           </div>
 

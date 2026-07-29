@@ -75,6 +75,14 @@
     "VERAISON": "Véraison & Maturation",
     "RECOLTE": "Récolte"
   },
+  "diseases": {
+    "peacockSpot": "Oeil de Paon",
+    "verticillium": "Verticilliose",
+    "oliveFly": "Mouche de l'Olive",
+    "moth": "Teigne de l'Olive",
+    "scale": "Cochenille Noire",
+    "anthracnose": "Anthracnose"
+  },
   "spectral": {
     "natural": "Naturel",
     "canopy": "Canopée (% Cover)",

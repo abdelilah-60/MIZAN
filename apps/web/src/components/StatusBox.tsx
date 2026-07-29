@@ -26,8 +26,8 @@ export function StatusBox({ fields, onSubmitLog, onToast }: StatusBoxProps) {
   const [duration, setDuration] = useState("120");
   const [fertilizerType, setFertilizerType] = useState("NPK 15-15-15");
   const [fertilizerQty, setFertilizerQty] = useState("20");
-  const [pesticideName, setPesticideName] = useState("Cuivre (Bordelaise)");
-  const [targetPest, setTargetPest] = useState("Peacock Spot (Oeil de paon)");
+  const [pesticideName, setPesticideName] = useState("هيدروكسيد النحاس");
+  const [targetPest, setTargetPest] = useState("مرض عين الطاووس");
   const [harvestQty, setHarvestQty] = useState("5");
 
   const recognitionRef = useRef<any>(null);
@@ -287,15 +287,15 @@ export function StatusBox({ fields, onSubmitLog, onToast }: StatusBoxProps) {
 
           {/* 2. Operation Type Selector */}
           <div className="space-y-2">
-            <label className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Type d'opération (العملية)</label>
+            <label className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">نوع التدخل الزراعي</label>
             <div className="grid grid-cols-4 gap-2">
               {(["IRRIGATION", "FERTILIZER", "PESTICIDE", "HARVEST"] as OperationType[]).map((type) => {
                 const isSelected = selectedType === type;
                 const config = ({
-                  IRRIGATION: { icon: "💧", label: "Irrigation", color: "border-blue-500/30 text-blue-400 bg-blue-500/5" },
-                  FERTILIZER: { icon: "🌱", label: "Fertilisation", color: "border-emerald-500/30 text-emerald-400 bg-emerald-500/5" },
-                  PESTICIDE: { icon: "🧪", label: "Traitement", color: "border-purple-500/30 text-purple-400 bg-purple-500/5" },
-                  HARVEST: { icon: "🚜", label: "Récolte", color: "border-amber-500/30 text-amber-400 bg-amber-500/5" },
+                  IRRIGATION: { icon: "💧", label: "ري الحقل", color: "border-blue-500/30 text-blue-400 bg-blue-500/5" },
+                  FERTILIZER: { icon: "🌱", label: "تسميد", color: "border-emerald-500/30 text-emerald-400 bg-emerald-500/5" },
+                  PESTICIDE: { icon: "🧪", label: "معالجة وقائية", color: "border-purple-500/30 text-purple-400 bg-purple-500/5" },
+                  HARVEST: { icon: "🚜", label: "جني المحصول", color: "border-amber-500/30 text-amber-400 bg-amber-500/5" },
                 } as any)[type];
 
                 return (

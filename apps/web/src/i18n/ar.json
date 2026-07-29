@@ -75,6 +75,14 @@
     "VERAISON": "تلوين الثمرة وبداية النضج",
     "RECOLTE": "الجني والحصاد"
   },
+  "diseases": {
+    "peacockSpot": "عين الطاووس",
+    "verticillium": "الذبول الفرتيسيليومي",
+    "oliveFly": "ذبابة الزيتون",
+    "moth": "عثة الزيتون",
+    "scale": "الحشرة القشرية السوداء",
+    "anthracnose": "الأنثراكنوز"
+  },
   "spectral": {
     "natural": "طبيعي",
     "canopy": "كثافة الأشجار (% Cover)",
@@ -85,8 +93,8 @@
     "ndti": "مؤشر التبن والقش (NDTI)"
   },
   "operations": {
-    "IRRIGATION": "ري",
-    "FERTILIZER": "تسميد",
+    "IRRIGATION": "ري الحقل",
+    "FERTILIZER": "تسميد كيميائي",
     "PESTICIDE": "معالجة وقائية",
     "HARVEST": "جني المحصول",
     "PRUNING": "تقليم الأشجار",

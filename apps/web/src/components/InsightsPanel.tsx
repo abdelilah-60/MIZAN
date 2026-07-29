@@ -103,12 +103,12 @@ export const InsightsPanel = React.memo(function InsightsPanel({ data, cropType 
                           <div className="flex items-center justify-between gap-2 mb-2">
                             <span className="font-semibold text-slate-200 text-xs">
                               {disease === "Peacock Spot"
-                                ? "🦚 Oeil de Paon"
+                                ? "🦚 مرض عين الطاووس"
                                 : disease === "Olive Knot"
-                                ? "🌳 سل الزيتون (Olive Knot)"
+                                ? "🌳 سل الزيتون المقترن"
                                 : disease === "Verticillium Wilt"
-                                ? "🌱 Verticilliose"
-                                : "🪰 Mouche de l'Olive"}
+                                ? "🌱 الذبول الفرتيسيليومي"
+                                : "🪰 ذبابة الزيتون"}
                             </span>
                             <span
                               className={`px-2 py-0.5 rounded text-[10px] font-bold border uppercase tracking-wider ${colorClass}`}
