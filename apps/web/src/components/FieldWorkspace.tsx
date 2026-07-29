@@ -17,6 +17,7 @@ import { SpectralLayerSwitcher } from "./SpectralLayerSwitcher";
 import { DigitalTwinKPIs } from "./DigitalTwinKPIs";
 import { SmartRecommendationCard } from "./SmartRecommendationCard";
 import { SpectralIndexGuide } from "./SpectralIndexGuide";
+import { ReportViewer } from "./ReportViewer";
 
 interface FieldWorkspaceProps {
   field: Field;
@@ -117,6 +118,7 @@ export function FieldWorkspace({
   const [isDismissed, setIsDismissed] = useState(false);
   const [isAutoLogging, setIsAutoLogging] = useState(false);
   const [showIndexGuide, setShowIndexGuide] = useState(false);
+  const [showReport, setShowReport] = useState(false);
 
   const recommendedMinutes = agronomyData?.recommendations?.water?.durationMinutes || 0;
   const recommendedLiters = agronomyData?.recommendations?.water?.litersPerTree || 0;
@@ -377,6 +379,13 @@ export function FieldWorkspace({
             {/* Quick Action Buttons */}
             <div className="flex items-center gap-2">
               <button
+                onClick={() => setShowReport(true)}
+                className="bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-300 text-xs font-bold px-3.5 py-2 rounded-xl transition-all flex items-center gap-2 shadow-lg active:scale-95"
+              >
+                <span>📄</span>
+                <span>Rapport PDF (التقرير الموسمية)</span>
+              </button>
+              <button
                 onClick={() => setShowIndexGuide(true)}
                 className="bg-slate-900 hover:bg-slate-800 border border-white/10 hover:border-white/20 text-slate-200 text-xs font-bold px-3.5 py-2 rounded-xl transition-all flex items-center gap-2 shadow-lg active:scale-95"
               >
@@ -545,6 +554,7 @@ export function FieldWorkspace({
       </div>
 
       <SpectralIndexGuide isOpen={showIndexGuide} onClose={() => setShowIndexGuide(false)} />
+      {showReport && <ReportViewer field={field} onClose={() => setShowReport(false)} />}
     </div>
   );
 }
