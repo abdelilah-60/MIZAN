@@ -15,7 +15,11 @@
     "ha": "هكتار",
     "liters": "لتر",
     "minutes": "دقيقة",
-    "kg": "كجم"
+    "kg": "كجم",
+    "yes": "نعم",
+    "ignore": "تجاهل",
+    "back": "عودة",
+    "farm": "ضيعة"
   },
   "nav": {
     "feed": "الرئيسية والمستغلة",
@@ -24,6 +28,17 @@
     "profile": "الملف الشخصي",
     "createField": "إضافة حقل جديد",
     "logout": "تسجيل الخروج"
+  },
+  "grid": {
+    "phenologyGdd": "المراحل الفينولوجية والتراكم الحراري",
+    "liveWeather": "حالة الطقس المباشرة",
+    "chillingHours": "ساعات البرودة",
+    "gddAccumulated": "التراكم الحراري GDD",
+    "temperature": "الحرارة",
+    "humidity": "الرطوبة",
+    "windSpeed": "الرياح",
+    "precipitation": "التساقطات",
+    "plantedDate": "غرس"
   },
   "workspace": {
     "tabs": {
@@ -52,13 +67,13 @@
     }
   },
   "phenology": {
-    "DORMANCE": "❄️ مرحلة السكون الشتوي (Dormance)",
-    "DEBOURREMENT": "🌱 خروج البراعم الربيعية (Débourrement)",
-    "FLORAISON": "🌸 مرحلة الإزهار (Floraison)",
-    "NOUAISON": "👶 عقد الثمار الفتية (Nouaison)",
-    "CROISSANCE": "📈 تصلب النواة وتراكم الزيت (Croissance/Durcissement)",
-    "VERAISON": "🎨 تلوين الثمرة وبداية النضج (Véraison)",
-    "RECOLTE": "🫒 الجني والحصاد (Récolte)"
+    "DORMANCE": "السكون الشتوي",
+    "DEBOURREMENT": "خروج البراعم الربيعية",
+    "FLORAISON": "مرحلة الإزهار",
+    "NOUAISON": "عقد الثمار الفتية",
+    "CROISSANCE": "تصلب النواة وتراكم الزيت",
+    "VERAISON": "تلوين الثمرة وبداية النضج",
+    "RECOLTE": "الجني والحصاد"
   },
   "spectral": {
     "natural": "طبيعي",
@@ -70,11 +85,35 @@
     "ndti": "مؤشر التبن والقش (NDTI)"
   },
   "operations": {
-    "IRRIGATION": "ري (Irrigation)",
-    "FERTILIZER": "تسميد (Fertilisation)",
-    "PESTICIDE": "معالجة وقائية (Pesticides)",
-    "HARVEST": "جني المحصول (Récolte)",
-    "PRUNING": "تقليم الأشجار (Taille)",
-    "TILLAGE": "حرث التربة (Labour)"
+    "IRRIGATION": "ري",
+    "FERTILIZER": "تسميد",
+    "PESTICIDE": "معالجة وقائية",
+    "HARVEST": "جني المحصول",
+    "PRUNING": "تقليم الأشجار",
+    "TILLAGE": "حرث التربة",
+    "ORGANIC_AMENDMENT": "تسميد عضوي"
+  },
+  "agronomy": {
+    "smartIrrigation": "حسابات الري الذكي الموصى بها",
+    "nitrogen": "الآزوت (N)",
+    "phosphorus": "الفوسفور (P₂O₅)",
+    "potassium": "البوتاسيوم (K₂O)",
+    "biologicalCeiling": "السقف البيولوجي الأقصى",
+    "dripperFlow": "تدفق القطّارة",
+    "treeDensity": "كثافة الأشجار",
+    "soilAnalysis": "تحليل عناصر التربة",
+    "ph": "درجة الحموضة pH",
+    "organicMatter": "المادة العضوية"
+  },
+  "modal": {
+    "logOperation": "تسجيل عملية جديدة",
+    "saveOperation": "تأكيد تسجيل العملية",
+    "type": "نوع التدخل الزراعي",
+    "date": "تاريخ التنفيذ",
+    "quantity": "الكمية",
+    "productName": "اسم المنتج / السماد",
+    "technique": "التقنية المستعملة",
+    "volume": "حجم المياه",
+    "duration": "مدة الري"
   }
 }

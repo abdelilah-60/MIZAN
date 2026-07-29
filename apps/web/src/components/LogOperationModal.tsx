@@ -122,23 +122,23 @@ export function LogOperationModal({
                   value={metadataPayload.technique || "FRUCTIFICATION"}
                   onChange={(e) => onMetadataChange({ ...metadataPayload, technique: e.target.value })}
                 >
-                  <option value="FORMATION">Taille de formation (تقليم التكوين)</option>
-                  <option value="FRUCTIFICATION">Taille de fructification (تقليم الإثمار)</option>
-                  <option value="RAJEUNISSEMENT">Taille de rajeunissement (تقليم التشبيب)</option>
+                  <option value="FORMATION">تقليم التكوين</option>
+                  <option value="FRUCTIFICATION">تقليم الإثمار</option>
+                  <option value="RAJEUNISSEMENT">تقليم التشبيب</option>
                 </select>
               </div>
 
               <div className="space-y-1">
-                <label htmlFor="pruning-intensity" className="text-xs text-slate-400 ml-1">Niveau d&apos;Intensité (Intensity Level)</label>
+                <label htmlFor="pruning-intensity" className="text-xs text-slate-400 ml-1">شدة التقليم</label>
                 <select
                   id="pruning-intensity"
                   className="w-full bg-slate-800 border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all text-white"
                   value={metadataPayload.intensityLevel || "MODERATE"}
                   onChange={(e) => onMetadataChange({ ...metadataPayload, intensityLevel: e.target.value })}
                 >
-                  <option value="LIGHT">Légère / خفيفة (إزالة أقل من 10%)</option>
-                  <option value="MODERATE">Modérée / متوسطة (إزالة 10% إلى 20%)</option>
-                  <option value="SEVERE">Sévère / قاسية (إزالة أكثر من 20%)</option>
+                  <option value="LIGHT">خفيفة (إزالة أقل من 10%)</option>
+                  <option value="MODERATE">متوسطة (إزالة 10% إلى 20%)</option>
+                  <option value="SEVERE">قاسية (إزالة أكثر من 20%)</option>
                 </select>
               </div>
             </div>
@@ -158,16 +158,16 @@ export function LogOperationModal({
           ) : logForm.type === "TILLAGE" ? (
             <div className="space-y-4">
               <div className="space-y-1">
-                <label htmlFor="tillage-tech" className="text-xs text-slate-400 ml-1">Outil / Technique (Technique)</label>
+                <label htmlFor="tillage-tech" className="text-xs text-slate-400 ml-1">نوع تقنية الحرث</label>
                 <select
                   id="tillage-tech"
                   className="w-full bg-slate-800 border border-white/10 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all text-white"
                   value={metadataPayload.technique || "CHISEL"}
                   onChange={(e) => onMetadataChange({ ...metadataPayload, technique: e.target.value })}
                 >
-                  <option value="CHISEL">Chisel (حرث عميق / شيزل)</option>
-                  <option value="COVER_CROP">Cover-crop (حرث سطحي / كوفير كروب)</option>
-                  <option value="ROTAVATOR">Rotavator (تفتيت التربة / روتاري)</option>
+                  <option value="CHISEL">حرث شيزل عميق</option>
+                  <option value="COVER_CROP">حرث سطحي كوفير كروب</option>
+                  <option value="ROTAVATOR">تفتيت التربة روتاري</option>
                 </select>
               </div>
 

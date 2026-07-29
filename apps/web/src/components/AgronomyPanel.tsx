@@ -258,12 +258,12 @@ export const AgronomyPanel = React.memo(function AgronomyPanel({
 
                   <div className="mt-4 pt-3 border-t border-white/5 space-y-3">
                     <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block">
-                      Suivi Nutritionnel Annuel (متابعة التسميد السنوي)
+                      متابعة التسميد السنوي
                     </span>
                     
                     <div className="space-y-1">
                       <div className="flex justify-between text-[10px]">
-                        <span className="text-slate-400">Azote (N) - الآزوت</span>
+                        <span className="text-slate-400">الآزوت (N)</span>
                         <span className="font-mono">
                           {loggedN_ha.toFixed(1)} / {recN} kg/ha ({Math.round(pctN)}%)
                         </span>
@@ -281,13 +281,13 @@ export const AgronomyPanel = React.memo(function AgronomyPanel({
                         />
                       </div>
                       {pctN > 115 && (
-                        <p className="text-[9px] text-amber-400 font-medium">⚠️ Alerte: Excès d&apos;azote (تسمم نتروجيني).</p>
+                        <p className="text-[9px] text-amber-400 font-medium">⚠️ تنبيه: إفرات نتروجيني زائد عن الحاجة.</p>
                       )}
                     </div>
 
                     <div className="space-y-1">
                       <div className="flex justify-between text-[10px]">
-                        <span className="text-slate-400">Phosphore (P2O5) - الفوسفور</span>
+                        <span className="text-slate-400">الفوسفور (P₂O₅)</span>
                         <span className="font-mono">
                           {loggedP_ha.toFixed(1)} / {recP} kg/ha ({Math.round(pctP)}%)
                         </span>
@@ -308,7 +308,7 @@ export const AgronomyPanel = React.memo(function AgronomyPanel({
 
                     <div className="space-y-1">
                       <div className="flex justify-between text-[10px]">
-                        <span className="text-slate-400">Potassium (K2O) - البوتاسيوم</span>
+                        <span className="text-slate-400">البوتاسيوم (K₂O)</span>
                         <span className="font-mono">
                           {loggedK_ha.toFixed(1)} / {recK} kg/ha ({Math.round(pctK)}%)
                         </span>

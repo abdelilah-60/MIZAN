@@ -4,7 +4,7 @@
     "subTitle": "Télédétection & Gestion des Exploitations par IA",
     "searchPlaceholder": "Rechercher une parcelle, variété ou ferme...",
     "close": "Fermer",
-    "save": "Enregistrer",
+    "save": "Enregistrer les modifications",
     "cancel": "Annuler",
     "delete": "Supprimer",
     "edit": "Modifier",
@@ -15,15 +15,30 @@
     "ha": "ha",
     "liters": "L",
     "minutes": "min",
-    "kg": "kg"
+    "kg": "kg",
+    "yes": "Oui",
+    "ignore": "Ignorer",
+    "back": "Retour",
+    "farm": "Ferme"
   },
   "nav": {
-    "feed": "Accueil & Exploitation",
-    "analytics": "Tableau de Bord & Analyses",
+    "feed": "Fil d'actualité & Exploitation",
+    "analytics": "Tableau de bord & Analyses",
     "knowledge": "Base de Connaissances",
     "profile": "Profil Utilisateur",
     "createField": "Nouvelle Parcelle",
     "logout": "Déconnexion"
+  },
+  "grid": {
+    "phenologyGdd": "Progression Phénologique & Cumul Thermique",
+    "liveWeather": "Conditions Météo en Direct",
+    "chillingHours": "Heures de Froid",
+    "gddAccumulated": "Cumul Thermique GDD",
+    "temperature": "Température",
+    "humidity": "Humidité",
+    "windSpeed": "Vent",
+    "precipitation": "Précipitations",
+    "plantedDate": "Plantation"
   },
   "workspace": {
     "tabs": {
@@ -52,13 +67,13 @@
     }
   },
   "phenology": {
-    "DORMANCE": "❄️ Dormance Hivernale",
-    "DEBOURREMENT": "🌱 Débourrement des Bourgeons",
-    "FLORAISON": "🌸 Floraison",
-    "NOUAISON": "👶 Nouaison des Fruits",
-    "CROISSANCE": "📈 Durcissement du Noyau & Grossissement",
-    "VERAISON": "🎨 Véraison & Maturation",
-    "RECOLTE": "🫒 Récolte"
+    "DORMANCE": "Dormance Hivernale",
+    "DEBOURREMENT": "Débourrement des Bourgeons",
+    "FLORAISON": "Floraison",
+    "NOUAISON": "Nouaison des Fruits",
+    "CROISSANCE": "Durcissement du Noyau & Grossissement",
+    "VERAISON": "Véraison & Maturation",
+    "RECOLTE": "Récolte"
   },
   "spectral": {
     "natural": "Naturel",
@@ -75,6 +90,30 @@
     "PESTICIDE": "Traitement Phytosanitaire",
     "HARVEST": "Récolte",
     "PRUNING": "Taille",
-    "TILLAGE": "Labour"
+    "TILLAGE": "Labour",
+    "ORGANIC_AMENDMENT": "Amendement Organique"
+  },
+  "agronomy": {
+    "smartIrrigation": "Calculs d'Irrigation Recommandés",
+    "nitrogen": "Azote (N)",
+    "phosphorus": "Phosphore (P₂O₅)",
+    "potassium": "Potassium (K₂O)",
+    "biologicalCeiling": "Plafond Biologique Max",
+    "dripperFlow": "Débit du Goutteur",
+    "treeDensity": "Densité de Plantation",
+    "soilAnalysis": "Analyse Physico-Chimique du Sol",
+    "ph": "pH du Sol",
+    "organicMatter": "Matière Organique"
+  },
+  "modal": {
+    "logOperation": "Enregistrer une Nouvelle Intervention",
+    "saveOperation": "Valider l'Intervention",
+    "type": "Type d'Intervention",
+    "date": "Date de Réalisation",
+    "quantity": "Quantité",
+    "productName": "Nom du Produit / Engrais",
+    "technique": "Technique Utilisée",
+    "volume": "Volume d'Eau",
+    "duration": "Durée d'Irrigation"
   }
 }
