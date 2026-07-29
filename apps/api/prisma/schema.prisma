@@ -52,6 +52,7 @@ model Field {
   irrigationConfig IrrigationConfig?
   soilAnalysis     SoilAnalysis[]
   yieldConfig      YieldConfig?
+  snapshots        SatelliteSnapshot[]
 }
 
 model Operation {
@@ -167,4 +168,25 @@ model YieldConfig {
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
   field            Field    @relation(fields: [fieldId], references: [id], onDelete: Cascade)
+}
+
+model SatelliteSnapshot {
+  id              String   @id @default(cuid())
+  fieldId         String
+  captureDate     DateTime
+  dataSource      String
+  cloudCover      Float?
+  meanSavi        Float
+  meanNdvi        Float
+  meanNdwi        Float
+  meanNdre        Float
+  canopyCoverPct  Float
+  phenologyClass  String?
+  rawPayload      Json?
+  
+  field           Field    @relation(fields: [fieldId], references: [id], onDelete: Cascade)
+  createdAt       DateTime @default(now())
+  
+  @@unique([fieldId, captureDate])
+  @@index([fieldId])
 }

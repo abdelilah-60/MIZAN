@@ -37,6 +37,32 @@ export function FieldForm({
 }: FieldFormProps) {
   const [fieldRequirements, setFieldRequirements] = useState<FieldRequirement[]>([]);
   const [isFetchingFieldReqs, setIsFetchingFieldReqs] = useState(false);
+  const [varieties, setVarieties] = useState<{ id?: string; name: string }[]>([]);
+  const [isFetchingVarieties, setIsFetchingVarieties] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+    const fetchVarieties = async () => {
+      setIsFetchingVarieties(true);
+      try {
+        const res = await fetch("/api/admin/varieties", {
+          headers: getHeaders(token),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (isMounted) setVarieties(data);
+        }
+      } catch (err) {
+        console.error("Failed to fetch varieties", err);
+      } finally {
+        if (isMounted) setIsFetchingVarieties(false);
+      }
+    };
+    fetchVarieties();
+    return () => {
+      isMounted = false;
+    };
+  }, [token]);
 
   useEffect(() => {
     if (!newField.cropType) return;
@@ -116,17 +142,35 @@ export function FieldForm({
             value={newField.cropType}
             onChange={(e) => updateField({ cropType: e.target.value })}
             aria-label="Olive Variety"
+            disabled={isFetchingVarieties}
           >
-            <optgroup label="🌍 Maroc (Local)">
-              <option value="Picholine Marocaine">Picholine Marocaine</option>
-              <option value="Haouzia">Haouzia</option>
-              <option value="Menara">Menara</option>
-              <option value="Dahbia">Dahbia</option>
-              <option value="Meslala">Meslala</option>
-            </optgroup>
-            <optgroup label="🌍 Méditerranéen Introduit">
-              <option value="Arbequina">Arbequina</option>
-            </optgroup>
+            {isFetchingVarieties ? (
+              <option value="">Chargement...</option>
+            ) : varieties.length > 0 ? (
+              <>
+                <option value="" disabled hidden>
+                  Sélectionner
+                </option>
+                {varieties.map((v) => (
+                  <option key={v.id || v.name} value={v.name}>
+                    {v.name}
+                  </option>
+                ))}
+              </>
+            ) : (
+              <>
+                <optgroup label="🌍 Maroc (Local)">
+                  <option value="Picholine Marocaine">Picholine Marocaine</option>
+                  <option value="Haouzia">Haouzia</option>
+                  <option value="Menara">Menara</option>
+                  <option value="Dahbia">Dahbia</option>
+                  <option value="Meslala">Meslala</option>
+                </optgroup>
+                <optgroup label="🌍 Méditerranéen Introduit">
+                  <option value="Arbequina">Arbequina</option>
+                </optgroup>
+              </>
+            )}
           </select>
         </div>
         <div className="space-y-1">

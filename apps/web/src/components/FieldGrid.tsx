@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import type { Field, WeatherData } from "../lib/types";
 
 interface FieldGridProps {
@@ -19,7 +19,7 @@ function getFieldAge(plantingDate?: string): number | null {
   return years;
 }
 
-const stagesSequence = [
+const defaultStagesSequence = [
   { id: "DORMANCE", label: "Dormance (السكون)", emoji: "❄️" },
   { id: "DEBOURREMENT", label: "Débourrement (البراعم)", emoji: "🌱" },
   { id: "FLORAISON", label: "Floraison (التزهير)", emoji: "🌸" },
@@ -28,6 +28,7 @@ const stagesSequence = [
   { id: "VERAISON", label: "Véraison (التلوين)", emoji: "🎨" },
   { id: "RECOLTE", label: "Récolte (الجني)", emoji: "🫒" }
 ];
+
 
 export function FieldGrid({
   fields,
@@ -38,6 +39,34 @@ export function FieldGrid({
   onDeleteField,
   debouncedSearchQuery,
 }: FieldGridProps) {
+  const [stagesSequence, setStagesSequence] = useState(defaultStagesSequence);
+
+  useEffect(() => {
+    let isMounted = true;
+    const fetchStages = async () => {
+      try {
+        const res = await fetch("/api/ontology/stages");
+        if (res.ok) {
+          const data = await res.json();
+          if (isMounted && data && Array.isArray(data) && data.length > 0) {
+            const apiStages = data.map((stage: any) => ({
+              id: stage.id || stage.name,
+              label: stage.label || stage.name,
+              emoji: stage.emoji || "🌱",
+            }));
+            setStagesSequence(apiStages);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch stages", err);
+      }
+    };
+    fetchStages();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   // Automatically fetch weather for all fields as soon as they load
   useEffect(() => {
     fields.forEach((field) => {
