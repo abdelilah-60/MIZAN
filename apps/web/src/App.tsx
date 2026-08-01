@@ -19,11 +19,32 @@ import OfflineBanner from "./components/OfflineBanner";
 import AuthScreen from "./components/AuthScreen";
 import type { HealthStatus, Field } from "./lib/types";
 
-const AdminPanel = lazy(() => import("./components/AdminPanel"));
-const AnalyticsDashboard = lazy(() => import("./components/AnalyticsDashboard").then(m => ({ default: m.AnalyticsDashboard })));
-const ProfilePage = lazy(() => import("./components/ProfilePage").then(m => ({ default: m.ProfilePage })));
-const FieldForm = lazy(() => import("./components/FieldForm").then(m => ({ default: m.FieldForm })));
-const FieldWorkspace = lazy(() => import("./components/FieldWorkspace").then(m => ({ default: m.FieldWorkspace })));
+function safeLazy(
+  factory: () => Promise<any>
+) {
+  return lazy(async () => {
+    try {
+      const mod = await factory();
+      return mod && mod.default ? mod : { default: mod };
+    } catch (error: any) {
+      console.warn("Chunk load error (fresh deployment). Auto-reloading page...", error);
+      const lastReload = sessionStorage.getItem("mizan_chunk_reload_time");
+      const now = Date.now();
+      if (!lastReload || now - parseInt(lastReload, 10) > 8000) {
+        sessionStorage.setItem("mizan_chunk_reload_time", now.toString());
+        window.location.reload();
+        return new Promise(() => {});
+      }
+      throw error;
+    }
+  });
+}
+
+const AdminPanel = safeLazy(() => import("./components/AdminPanel"));
+const AnalyticsDashboard = safeLazy(() => import("./components/AnalyticsDashboard").then(m => m.AnalyticsDashboard));
+const ProfilePage = safeLazy(() => import("./components/ProfilePage").then(m => m.ProfilePage));
+const FieldForm = safeLazy(() => import("./components/FieldForm").then(m => m.FieldForm));
+const FieldWorkspace = safeLazy(() => import("./components/FieldWorkspace").then(m => m.FieldWorkspace));
 
 export default function App() {
   const auth = useAuth();
@@ -282,7 +303,7 @@ export default function App() {
                     newField={fieldData.newField}
                     onFieldChange={fieldData.setNewField}
                     farms={fieldData.farms}
-                    onSubmit={async (e) => {
+                    onSubmit={async (e: React.FormEvent) => {
                       e.preventDefault();
                       await fieldData.handleCreateField(e);
                       fieldData.setActiveTab("fields");
@@ -316,7 +337,7 @@ export default function App() {
                   fields={fieldData.fields}
                   operationsData={Object.values(fieldOperations.operationsData).flat()}
                   token={auth.token || ""}
-                  onSelectField={(id) => {
+                  onSelectField={(id: string | null) => {
                     fieldData.setSelectedFieldId(id);
                     fieldData.setActiveTab("fields");
                   }}
