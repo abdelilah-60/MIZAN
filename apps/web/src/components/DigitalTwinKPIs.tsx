@@ -33,19 +33,36 @@ export const DigitalTwinKPIs = React.memo(function DigitalTwinKPIs({
           </p>
         </div>
 
-        {/* KPI 2: Canopy Cover % */}
+        {/* KPI 2: Canopy Cover % & Individual Tree Count */}
         <div className="bg-[#1f2d3a] border border-[#2e4052] hover:border-[#8D5B4C]/40 p-4 rounded-2xl space-y-1 shadow-lg relative overflow-hidden group transition-all">
           <div className="flex items-center justify-between text-[#A8A093] text-[10px] font-bold uppercase tracking-wider">
-            <span>كثافة العرش الحقيقية</span>
+            <span>كثافة العرش والأشجار</span>
             <span>🌳</span>
           </div>
-          <div className="flex items-baseline gap-1 pt-1">
+          <div className="flex items-baseline gap-2 pt-1">
             <span className="text-2xl font-black text-[#F9F8F6] font-mono">
               {satelliteData?.canopyCover?.meanPct || 0}%
             </span>
+            {satelliteData?.treeCrowns?.treeCount > 0 && (
+              <span className="text-xs font-mono font-bold text-[#8D5B4C] bg-[#8D5B4C]/20 border border-[#8D5B4C]/30 px-2 py-0.5 rounded-md">
+                {satelliteData.treeCrowns.treeCount} شجرة ⭕
+              </span>
+            )}
           </div>
-          <p className="text-[10px] font-bold text-[#D8D2C5]">
-            {satelliteData?.canopyCover?.meanPct >= 35 ? "عرش كثيف متجانس 🟢" : (satelliteData?.canopyCover?.meanPct >= 18 ? "عرش متوازن 🟢" : "0% أشجار 🔴")}
+          <p className="text-[10px] font-bold text-[#D8D2C5] truncate">
+            {(() => {
+              const category = satelliteData?.treeCrowns?.landCoverCategory;
+              if (category === "BARE_FALLOW_LAND" || (satelliteData?.canopyCover?.meanPct || 0) < 5) {
+                return "🏜️ أرض بور فارغة (0 أشجار)";
+              }
+              if (category === "SEASONAL_ANNUAL_CROP") {
+                return "🌾 محصول حقلي موسمي (زراعات كبرى)";
+              }
+              if (satelliteData?.treeCrowns?.meanCanopyDiameterM > 0) {
+                return `🌳 ${satelliteData.treeCrowns.treeCount} شجرة مكتشفة (قطر العرش: ${satelliteData.treeCrowns.meanCanopyDiameterM}m)`;
+              }
+              return satelliteData?.canopyCover?.meanPct >= 35 ? "عرش كثيف متجانس 🟢" : "عرش متوازن 🟢";
+            })()}
           </p>
         </div>
 
