@@ -673,7 +673,7 @@ async def analyze_satellite(req: SatelliteAnalysisRequest):
                 denom_ndre = grid_nir + grid_rededge
                 grid_ndre = np.where(denom_ndre > 0, (grid_nir - grid_rededge) / denom_ndre, 0.0)
             else:
-                grid_ndre = np.clip(grid_savi * 0.45, 0.01, 0.30)
+                grid_ndre = np.where(grid_savi > 0.08, np.clip(grid_savi * 0.55 + 0.035, 0.045, 0.30), 0.02)
 
             lons = np.linspace(min_lng, max_lng, grid_size)
             lats = np.linspace(max_lat, min_lat, grid_size)
