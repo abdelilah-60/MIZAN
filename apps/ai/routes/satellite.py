@@ -214,55 +214,42 @@ def apply_spectral_decision_tree(grid_savi: np.ndarray, grid_ndvi: np.ndarray, g
 
     valid_savi = grid_savi[valid_mask]
     valid_ndvi = grid_ndvi[valid_mask] if grid_ndvi is not None else valid_savi
-    valid_ndre = grid_ndre[valid_mask] if grid_ndre is not None else np.zeros_like(valid_savi)
+    valid_ndre = grid_ndre[valid_mask] if grid_ndre is not None else np.full_like(valid_savi, 0.12)
 
     mean_savi = float(np.mean(valid_savi))
     mean_ndvi = float(np.mean(valid_ndvi))
     mean_ndre = float(np.mean(valid_ndre))
 
-    # Physical Bare Soil Override (BSI and Low NDRE Override DB cropType string if physically bare)
-    is_physical_bare = (mean_ndre < 0.035) or (float(np.percentile(valid_savi, 90)) < 0.16 and mean_ndre < 0.045)
-
-    # Protective Bare Shield (Active vegetation requires genuine Red Edge chlorophyll jump)
-    is_high_vegetation = ((mean_ndvi > 0.25) or (mean_savi > 0.18)) and (mean_ndre >= 0.04)
-
+    # Explicit Bare / Fallow Land check
     is_explicit_bare = (profile["group_id"] == "GROUP_4_ANNUAL_VEGETABLES_BARE") and any(w in crop_type.lower() for w in ["bare", "fallow", "بور", "فارغ", "فارغة"])
-    is_auto_bare = is_physical_bare or ((float(np.percentile(valid_savi, 90)) <= profile["bsi_bare_cutoff"]) and (mean_ndvi <= 0.12))
-    is_bare_land = (is_explicit_bare or is_auto_bare) and (not is_high_vegetation)
+    is_auto_bare = (mean_savi < 0.08 and mean_ndvi < 0.11 and mean_ndre < 0.035)
 
-    if is_bare_land:
+    if is_explicit_bare or is_auto_bare:
         return f_tree_grid
 
     # 3. Absolute Soil Baseline Anchor
-    savi_soil = float(min(np.percentile(valid_savi, 15), 0.08))
-    savi_max = float(np.percentile(valid_savi, 95)) if len(valid_savi) > 0 else 0.35
+    savi_soil = float(min(np.percentile(valid_savi, 10), 0.08))
+    savi_max = float(np.percentile(valid_savi, 95)) if len(valid_savi) > 0 else 0.38
+    savi_range = max(0.12, savi_max - savi_soil)
 
-    # 4. Profile-Driven Adaptive Tree Thresholding
-    if mean_savi > 0.14:
-        tree_threshold = profile["pv_min_threshold"]
-    elif savi_soil <= 0.08:
-        tree_threshold = max(savi_soil + 0.03, profile["pv_min_threshold"])
-    else:
-        tree_threshold = profile["pv_min_threshold"]
-
-    # 5. Continuous Spectral Unmixing
+    # 4. Continuous Spectral Unmixing for Tree Canopy Cover
     for i in range(h):
         for j in range(w):
             if not poly_mask[i, j]:
                 continue
 
             savi_val = grid_savi[i, j]
-            ndti_val = grid_ndti[i, j]
-            ndre_val = grid_ndre[i, j]
+            ndti_val = grid_ndti[i, j] if grid_ndti is not None else 0.0
+            ndre_val = grid_ndre[i, j] if grid_ndre is not None else 0.08
 
-            # Rule 1: Crop Residue / Harvested Straw
-            if (ndti_val > 0.05 and ndre_val < profile["ndre_chlorophyll_min"]):
+            # Harvested Straw Check
+            if ndti_val > 0.15 and ndre_val < 0.035:
                 f_tree_grid[i, j] = 0.0
-            elif (savi_val < tree_threshold):
+            elif savi_val <= savi_soil:
                 f_tree_grid[i, j] = 0.0
             else:
-                ratio = (savi_val - tree_threshold) / (savi_max - tree_threshold + 1e-9)
-                f_tree_grid[i, j] = float(np.clip(ratio, 0.0, 1.0))
+                ratio = (savi_val - savi_soil) / savi_range
+                f_tree_grid[i, j] = float(np.clip(ratio, 0.08, 1.0))
 
     return f_tree_grid
 
@@ -709,11 +696,10 @@ async def analyze_satellite(req: SatelliteAnalysisRequest):
     # 4. Apply Spectral Decision Tree Architecture (NDTI Straw Masking + NDRE Living Chlorophyll)
     f_tree_grid = apply_spectral_decision_tree(grid_savi, grid_ndvi, grid_ndti, grid_ndre, poly_mask & (~cloud_shadow_mask), crop_type)
 
-    # Calculate statistics on inner eroded field mask (stripping outside border overlaps)
-    raw_poly_pixels = poly_mask & (~cloud_shadow_mask)
-    eroded_poly_pixels = erode_mask(poly_mask, iterations=2) & (~cloud_shadow_mask)
-    
-    valid_poly_pixels = eroded_poly_pixels if np.any(eroded_poly_pixels) else raw_poly_pixels
+    # Calculate statistics strictly inside field polygon mask
+    valid_poly_pixels = poly_mask & (~cloud_shadow_mask) & (grid_savi > 0.02)
+    if not np.any(valid_poly_pixels):
+        valid_poly_pixels = poly_mask & (~cloud_shadow_mask)
     if not np.any(valid_poly_pixels):
         valid_poly_pixels = poly_mask
 
