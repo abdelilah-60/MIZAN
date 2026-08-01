@@ -70,13 +70,13 @@ export function FieldGrid({
   }, [fields, onFetchWeather]);
 
   const stageColors: Record<string, string> = {
-    DORMANCE: "bg-slate-800 text-slate-300 border-slate-700",
-    DEBOURREMENT: "bg-emerald-950 text-emerald-300 border-emerald-800",
-    FLORAISON: "bg-pink-950 text-pink-300 border-pink-800",
-    NOUAISON: "bg-yellow-950 text-yellow-300 border-yellow-800",
-    CROISSANCE: "bg-teal-950 text-teal-300 border-teal-800",
-    VERAISON: "bg-purple-950 text-purple-300 border-purple-800",
-    RECOLTE: "bg-amber-950 text-amber-300 border-amber-800",
+    DORMANCE: "bg-[#2C3E50] text-[#F9F8F6] border-[#2e4052]",
+    DEBOURREMENT: "bg-[#8D5B4C]/20 text-[#8D5B4C] border-[#8D5B4C]/40",
+    FLORAISON: "bg-[#A0522D]/20 text-[#A0522D] border-[#A0522D]/40",
+    NOUAISON: "bg-[#C5A059]/20 text-[#C5A059] border-[#C5A059]/40",
+    CROISSANCE: "bg-[#8D5B4C] text-[#F9F8F6] border-[#A0522D]",
+    VERAISON: "bg-[#2C3E50] text-[#C5A059] border-[#C5A059]/40",
+    RECOLTE: "bg-[#A0522D] text-[#F9F8F6] border-[#B86B53]",
   };
 
   const filteredFields = fields.filter((f) => {
@@ -109,13 +109,13 @@ export function FieldGrid({
             <div
               key={field.id}
               onClick={() => onSelectField(field.id)}
-              className="bg-slate-900/60 border border-white/10 hover:border-emerald-500/30 rounded-2xl p-5 backdrop-blur-sm shadow-xl transition-all hover:scale-[1.01] hover:shadow-emerald-950/10 group flex flex-col justify-between cursor-pointer"
+              className="bg-[#1f2d3a] border border-[#2e4052] hover:border-[#8D5B4C]/40 rounded-2xl p-5 backdrop-blur-sm shadow-xl transition-all hover:scale-[1.01] hover:shadow-[#8D5B4C]/10 group flex flex-col justify-between cursor-pointer"
             >
               <div>
                 {/* Card Header */}
                 <div className="flex items-center justify-between mb-4">
-                  <span className="text-slate-500 text-[10px] font-bold tracking-wider uppercase flex items-center gap-1.5">
-                    <svg className="w-3.5 h-3.5 text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <span className="text-[#A8A093] text-[10px] font-bold tracking-wider uppercase flex items-center gap-1.5">
+                    <svg className="w-3.5 h-3.5 text-[#8D5B4C]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                     </svg>
                     {farmCleanName}
@@ -132,15 +132,15 @@ export function FieldGrid({
                 {/* Title & Variety */}
                 <div className="flex items-start justify-between gap-2">
                   <div>
-                    <h3 className="text-base font-bold text-white mb-1 group-hover:text-emerald-400 transition-colors">
+                    <h3 className="text-base font-bold text-[#F9F8F6] mb-1 group-hover:text-[#8D5B4C] transition-colors">
                       {field.name}
                     </h3>
-                    <p className="text-slate-400 text-[10px] mb-4 flex items-center gap-2">
-                      <span className="font-semibold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/25">
+                    <p className="text-[#A8A093] text-[10px] mb-4 flex items-center gap-2">
+                      <span className="font-semibold text-[#F9F8F6] bg-[#8D5B4C]/20 px-2 py-0.5 rounded border border-[#8D5B4C]/40">
                         {field.cropType || "Olive"}
                       </span>
                       <span>&bull;</span>
-                      <span className="font-mono text-slate-300">{field.area} ha</span>
+                      <span className="font-mono text-[#D8D2C5]">{field.area} ha</span>
                     </p>
                   </div>
                   <button
@@ -149,7 +149,7 @@ export function FieldGrid({
                       e.stopPropagation();
                       onDeleteField(field.id);
                     }}
-                    className="text-xs text-red-500 hover:text-red-400 p-1.5 rounded-lg hover:bg-red-500/10 transition-all active:scale-95 flex items-center justify-center"
+                    className="text-xs text-red-400 hover:text-red-300 p-1.5 rounded-lg hover:bg-red-500/10 transition-all active:scale-95 flex items-center justify-center"
                     title={t("common.delete")}
                   >
                     🗑️
@@ -158,18 +158,18 @@ export function FieldGrid({
 
                 {/* Timeline Progress Graph */}
                 <div className="my-5 px-1">
-                  <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider mb-2.5 block">
+                  <span className="text-[9px] text-[#A8A093] font-bold uppercase tracking-wider mb-2.5 block">
                     {t("grid.phenologyGdd")}
                   </span>
                   
                   {/* Timeline Bar */}
                   <div className="relative my-6 select-none">
                     {/* Background Track Line */}
-                    <div className="absolute top-1/2 left-3 right-3 h-1 bg-slate-800 -translate-y-1/2 rounded-full" />
+                    <div className="absolute top-1/2 left-3 right-3 h-1 bg-[#16212b] -translate-y-1/2 rounded-full border border-[#2e4052]/50" />
                     
                     {/* Active Progress Line */}
                     <div
-                      className="absolute top-1/2 left-3 h-1 bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-400 -translate-y-1/2 rounded-full transition-all duration-700"
+                      className="absolute top-1/2 left-3 h-1 bg-gradient-to-r from-[#8D5B4C] via-[#A0522D] to-[#B86B53] -translate-y-1/2 rounded-full transition-all duration-700 shadow-sm"
                       style={{ width: `calc(${progressPercent}% - 6px)` }}
                     />
 
@@ -184,17 +184,17 @@ export function FieldGrid({
                             <div
                               className={`rounded-full flex items-center justify-center transition-all duration-300 ${
                                 isCurrent
-                                  ? "w-8 h-8 bg-emerald-400 border-4 border-slate-950 shadow-lg shadow-emerald-400/30 scale-110 ring-2 ring-emerald-400/20 animate-pulse text-xs text-slate-950 font-bold"
+                                  ? "w-8 h-8 bg-[#8D5B4C] border-4 border-[#16212b] shadow-lg shadow-[#8D5B4C]/40 scale-110 ring-2 ring-[#8D5B4C]/30 animate-pulse text-xs text-[#F9F8F6] font-bold"
                                   : isCompleted
-                                  ? "w-6 h-6 bg-emerald-500 border-2 border-slate-950 shadow-md shadow-emerald-500/10 text-[9px] text-white font-bold"
-                                  : "w-6 h-6 bg-slate-800 border-2 border-slate-950 text-[9px] text-slate-500"
+                                  ? "w-6 h-6 bg-[#A0522D] border-2 border-[#16212b] shadow-md text-[9px] text-[#F9F8F6] font-bold"
+                                  : "w-6 h-6 bg-[#16212b] border-2 border-[#2e4052] text-[9px] text-[#A8A093]"
                               }`}
                             >
                               {stage.emoji}
                             </div>
                             
                             {/* Floating Stage Label Tooltip on Hover */}
-                            <div className="absolute -bottom-8 opacity-0 group-hover/node:opacity-100 bg-slate-950 border border-white/10 px-2 py-0.5 rounded text-[8px] font-bold text-emerald-400 whitespace-nowrap shadow-md transition-all duration-200 pointer-events-none z-20">
+                            <div className="absolute -bottom-8 opacity-0 group-hover/node:opacity-100 bg-[#16212b] border border-[#8D5B4C]/40 px-2 py-0.5 rounded text-[8px] font-bold text-[#F9F8F6] whitespace-nowrap shadow-md transition-all duration-200 pointer-events-none z-20">
                               {t(`phenology.${stage.id}`) || stage.id}
                             </div>
                           </div>
@@ -204,25 +204,25 @@ export function FieldGrid({
                   </div>
 
                   {/* GDD & Chilling Metrics Capsule */}
-                  <div className="bg-emerald-500/[0.03] border border-emerald-500/10 px-3 py-2 rounded-xl flex items-center justify-between text-[10px] text-emerald-400/90 font-mono font-bold mt-2 shadow-inner">
+                  <div className="bg-[#16212b] border border-[#2e4052] px-3 py-2 rounded-xl flex items-center justify-between text-[10px] text-[#8D5B4C] font-mono font-bold mt-2 shadow-inner">
                     <span className="flex items-center gap-1.5">
                       <span>🌡️</span>
-                      <span>{t("grid.gddAccumulated")}:</span>
-                      <span className="text-white font-extrabold">{gdd.toFixed(1)} GDD</span>
+                      <span className="text-[#A8A093]">{t("grid.gddAccumulated")}:</span>
+                      <span className="text-[#F9F8F6] font-extrabold">{gdd.toFixed(1)} GDD</span>
                     </span>
-                    <span className="text-emerald-500/30 font-light">|</span>
+                    <span className="text-[#2e4052] font-light">|</span>
                     <span className="flex items-center gap-1.5">
                       <span>❄️</span>
-                      <span>{t("grid.chillingHours")}:</span>
-                      <span className="text-white font-extrabold">{chilling} h</span>
+                      <span className="text-[#A8A093]">{t("grid.chillingHours")}:</span>
+                      <span className="text-[#F9F8F6] font-extrabold">{chilling} h</span>
                     </span>
                   </div>
                 </div>
 
                 {/* Weather Info Widget (Full Width & Auto-Loaded) */}
-                <div className="bg-slate-950/50 border border-white/10 rounded-xl p-3.5 flex flex-col justify-between mb-4 shadow-sm backdrop-blur-md">
+                <div className="bg-[#16212b]/80 border border-[#2e4052] rounded-xl p-3.5 flex flex-col justify-between mb-4 shadow-sm backdrop-blur-md">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-[10px] text-emerald-400 font-bold uppercase tracking-wider flex items-center gap-1.5">
+                    <span className="text-[10px] text-[#8D5B4C] font-bold uppercase tracking-wider flex items-center gap-1.5">
                       <span className="text-xs">🌤️</span> {t("grid.liveWeather")}
                     </span>
                   </div>
@@ -234,39 +234,39 @@ export function FieldGrid({
                     const precip = weather?.current?.precipitation ?? 0.0;
 
                     return (
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 border-t border-white/5 text-[10px]">
-                        <div className="flex items-center gap-2 bg-slate-900/60 p-2 rounded-lg border border-white/5">
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 border-t border-[#2e4052]/50 text-[10px]">
+                        <div className="flex items-center gap-2 bg-[#1f2d3a] p-2 rounded-lg border border-[#2e4052]/40">
                           <span className="text-base">🌡️</span>
                           <div className="flex flex-col">
-                            <span className="text-[8px] text-slate-500 font-bold uppercase">{t("grid.temperature")}</span>
-                            <span className="text-white font-extrabold font-mono text-xs">
+                            <span className="text-[8px] text-[#A8A093] font-bold uppercase">{t("grid.temperature")}</span>
+                            <span className="text-[#F9F8F6] font-extrabold font-mono text-xs">
                               {temp.toFixed(1)}°C
                             </span>
                           </div>
                         </div>
-                        <div className="flex items-center gap-2 bg-slate-900/60 p-2 rounded-lg border border-white/5">
+                        <div className="flex items-center gap-2 bg-[#1f2d3a] p-2 rounded-lg border border-[#2e4052]/40">
                           <span className="text-base">💧</span>
                           <div className="flex flex-col">
-                            <span className="text-[8px] text-slate-500 font-bold uppercase">{t("grid.humidity")}</span>
-                            <span className="text-sky-300 font-extrabold font-mono text-xs">
+                            <span className="text-[8px] text-[#A8A093] font-bold uppercase">{t("grid.humidity")}</span>
+                            <span className="text-[#F9F8F6] font-extrabold font-mono text-xs">
                               {humidity}%
                             </span>
                           </div>
                         </div>
-                        <div className="flex items-center gap-2 bg-slate-900/60 p-2 rounded-lg border border-white/5">
+                        <div className="flex items-center gap-2 bg-[#1f2d3a] p-2 rounded-lg border border-[#2e4052]/40">
                           <span className="text-base">💨</span>
                           <div className="flex flex-col">
-                            <span className="text-[8px] text-slate-500 font-bold uppercase">{t("grid.windSpeed")}</span>
-                            <span className="text-teal-300 font-extrabold font-mono text-xs">
+                            <span className="text-[8px] text-[#A8A093] font-bold uppercase">{t("grid.windSpeed")}</span>
+                            <span className="text-[#F9F8F6] font-extrabold font-mono text-xs">
                               {wind} <span className="text-[8px]">km/h</span>
                             </span>
                           </div>
                         </div>
-                        <div className="flex items-center gap-2 bg-slate-900/60 p-2 rounded-lg border border-white/5">
+                        <div className="flex items-center gap-2 bg-[#1f2d3a] p-2 rounded-lg border border-[#2e4052]/40">
                           <span className="text-base">🌧️</span>
                           <div className="flex flex-col">
-                            <span className="text-[8px] text-slate-500 font-bold uppercase">{t("grid.precipitation")}</span>
-                            <span className="text-blue-300 font-extrabold font-mono text-xs">
+                            <span className="text-[8px] text-[#A8A093] font-bold uppercase">{t("grid.precipitation")}</span>
+                            <span className="text-[#F9F8F6] font-extrabold font-mono text-xs">
                               {precip} <span className="text-[8px]">mm</span>
                             </span>
                           </div>
@@ -277,7 +277,7 @@ export function FieldGrid({
                 </div>
 
                 {/* Extra details (Soil & Age) */}
-                <div className="flex items-center gap-3 text-slate-500 text-[10px] mb-4 border-t border-white/5 pt-3">
+                <div className="flex items-center gap-3 text-[#A8A093] text-[10px] mb-4 border-t border-[#2e4052]/50 pt-3">
                   {age !== null && (
                     <span className="flex items-center gap-1">
                       <span>🌳</span> {age} {t("common.ha")}
@@ -291,17 +291,17 @@ export function FieldGrid({
                 </div>
               </div>
 
-              {/* Consulter Button */}
+              {/* Consulter / Open Field Button */}
               <button
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();
                   onSelectField(field.id);
                 }}
-                className="w-full py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-black rounded-xl shadow-md transition-all active:scale-[0.98] flex items-center justify-center gap-1.5 uppercase tracking-wider mt-2"
+                className="w-full py-3 px-4 bg-gradient-to-r from-[#8D5B4C] to-[#A0522D] hover:from-[#7a4d3f] hover:to-[#8D5B4C] text-[#F9F8F6] font-extrabold text-xs rounded-xl shadow-lg shadow-[#8D5B4C]/25 transition-all active:scale-[0.98] flex items-center justify-center gap-2 border border-[#B86B53]/30"
               >
-                <span>فتح بطاقة الحقل والتوصيات</span>
-                <span>➔</span>
+                <span>{t("grid.consultField")}</span>
+                <span className="text-sm">➔</span>
               </button>
             </div>
           );

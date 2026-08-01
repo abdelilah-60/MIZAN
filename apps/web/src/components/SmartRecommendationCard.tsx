@@ -28,23 +28,23 @@ export const SmartRecommendationCard = React.memo(function SmartRecommendationCa
     <>
       {/* ========== SMART STAGE RECOMMENDATION CARD ========== */}
       {smartRec && (
-        <div className="bg-gradient-to-br from-slate-900 via-slate-900 to-emerald-950/20 border border-white/10 rounded-3xl p-5 shadow-2xl space-y-4 animate-in slide-in-from-top-4 duration-300">
+        <div className="bg-[#1f2d3a] border border-[#8D5B4C]/30 rounded-3xl p-5 shadow-2xl space-y-4 animate-in slide-in-from-top-4 duration-300">
           <div className="flex items-start gap-4">
-            <div className="h-12 w-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-2xl flex-shrink-0">
+            <div className="h-12 w-12 rounded-2xl bg-[#8D5B4C]/20 border border-[#8D5B4C]/40 flex items-center justify-center text-2xl flex-shrink-0">
               {smartRec.icon}
             </div>
             <div className="space-y-1">
-              <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest">
+              <span className="text-[10px] font-bold text-[#8D5B4C] uppercase tracking-widest">
                 العمليات المقترحة للمرحلة الحالية (Stage-Specific Recommendation)
               </span>
-              <h4 className="text-sm font-bold text-white leading-snug">{smartRec.title}</h4>
-              <p className="text-xs text-slate-300 leading-relaxed font-sans mt-1">{smartRec.desc}</p>
+              <h4 className="text-sm font-bold text-[#F9F8F6] leading-snug">{smartRec.title}</h4>
+              <p className="text-xs text-[#D8D2C5] leading-relaxed font-sans mt-1">{smartRec.desc}</p>
             </div>
           </div>
-          <div className="flex justify-end pt-2 border-t border-white/5">
+          <div className="flex justify-end pt-2 border-t border-[#2e4052]">
             <button
               onClick={() => onLogOperation(field, smartRec.type, smartRec.prefill)}
-              className="px-5 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-black rounded-xl shadow-lg transition-all active:scale-[0.97] flex items-center gap-1.5"
+              className="px-5 py-2.5 bg-gradient-to-r from-[#8D5B4C] to-[#A0522D] hover:from-[#7a4d3f] hover:to-[#8D5B4C] text-[#F9F8F6] text-xs font-extrabold rounded-xl shadow-lg shadow-[#8D5B4C]/25 transition-all active:scale-[0.97] flex items-center gap-1.5 border border-[#B86B53]/30"
             >
               <span>{smartRec.icon}</span>
               <span>{smartRec.btnText}</span>
@@ -55,13 +55,13 @@ export const SmartRecommendationCard = React.memo(function SmartRecommendationCa
 
       {/* ========== ASSUMED COMPLIANCE BANNER ========== */}
       {showComplianceBanner && (
-        <div className="bg-gradient-to-r from-emerald-950/80 via-slate-900/90 to-emerald-950/80 border border-emerald-500/20 rounded-2xl p-4 shadow-xl animate-in slide-in-from-top-4 duration-300 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="bg-[#1f2d3a] border border-[#8D5B4C]/30 rounded-2xl p-4 shadow-xl animate-in slide-in-from-top-4 duration-300 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <span className="text-2xl animate-pulse">💧</span>
             <div>
-              <h4 className="text-sm font-bold text-white mb-0.5">Mizan Smart Irrigation Sync (التزام الري الذكي)</h4>
-              <p className="text-xs text-slate-300">
-                Nous estimons un besoin d&apos;irrigation de <span className="text-emerald-400 font-extrabold">{recommendedMinutes} min</span> ({recommendedLiters} L) pour aujourd&apos;hui. Avez-vous irrigué ?
+              <h4 className="text-sm font-bold text-[#F9F8F6] mb-0.5">Mizan Smart Irrigation Sync (التزام الري الذكي)</h4>
+              <p className="text-xs text-[#D8D2C5]">
+                Nous estimons un besoin d&apos;irrigation de <span className="text-[#8D5B4C] font-extrabold">{recommendedMinutes} min</span> ({recommendedLiters} L) pour aujourd&apos;hui. Avez-vous irrigué ?
               </p>
             </div>
           </div>
@@ -69,19 +69,19 @@ export const SmartRecommendationCard = React.memo(function SmartRecommendationCa
             <button
               onClick={handleAutoLog}
               disabled={isAutoLogging}
-              className="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-black rounded-xl shadow-md transition-all active:scale-95 whitespace-nowrap flex items-center gap-1.5"
+              className="px-4 py-2 bg-[#8D5B4C] hover:bg-[#A0522D] text-[#F9F8F6] text-xs font-black rounded-xl shadow-md transition-all active:scale-95 whitespace-nowrap flex items-center gap-1.5 border border-[#B86B53]/30"
             >
               {isAutoLogging ? "Enregistrement..." : "✅ Oui (نعم)"}
             </button>
             <button
               onClick={() => onLogOperation(field, "IRRIGATION")}
-              className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 border border-white/10 text-white text-xs font-bold rounded-xl transition-all active:scale-95 whitespace-nowrap"
+              className="px-3.5 py-2 bg-[#2C3E50] hover:bg-[#34495E] border border-[#2e4052] text-[#F9F8F6] text-xs font-bold rounded-xl transition-all active:scale-95 whitespace-nowrap"
             >
               ✏️ Modifier (تعديل)
             </button>
             <button
               onClick={() => onSetIsDismissed(true)}
-              className="p-2 hover:bg-white/5 text-slate-400 hover:text-white rounded-xl transition-all"
+              className="p-2 hover:bg-[#2C3E50]/40 text-[#A8A093] hover:text-[#F9F8F6] rounded-xl transition-all"
               title="Ignorer / تجاهل"
             >
               ✕

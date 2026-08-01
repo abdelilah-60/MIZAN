@@ -24,35 +24,35 @@ export const SpectralLayerSwitcher = React.memo(function SpectralLayerSwitcher({
       label: "Naturel (طبيعي)",
       icon: "🛰️",
       value: loadingSatellite ? "..." : null,
-      activeClass: "bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 font-black shadow-[0_0_20px_rgba(16,185,129,0.4)]",
+      activeClass: "bg-gradient-to-r from-[#8D5B4C] to-[#A0522D] text-[#F9F8F6] font-black shadow-[0_0_20px_rgba(141,91,76,0.5)] border border-[#B86B53]/40",
     },
     {
       id: "CANOPY" as const,
       label: "Cover % (كثافة الأشجار)",
       icon: "🌳",
       value: satelliteData?.canopyCover ? `${satelliteData.canopyCover.meanPct}%` : null,
-      activeClass: "bg-gradient-to-r from-emerald-400 to-green-500 text-slate-950 font-black shadow-[0_0_20px_rgba(52,211,153,0.4)]",
+      activeClass: "bg-gradient-to-r from-[#8D5B4C] to-[#B86B53] text-[#F9F8F6] font-black shadow-[0_0_20px_rgba(141,91,76,0.5)] border border-[#B86B53]/40",
     },
     {
       id: "SAVI" as const,
       label: "SAVI (صحة الأشجار)",
       icon: "🌿",
       value: satelliteData?.savi ? satelliteData.savi.mean : null,
-      activeClass: "bg-gradient-to-r from-teal-400 to-emerald-500 text-slate-950 font-black shadow-[0_0_20px_rgba(45,212,191,0.4)]",
+      activeClass: "bg-gradient-to-r from-[#A0522D] to-[#8D5B4C] text-[#F9F8F6] font-black shadow-[0_0_20px_rgba(160,82,45,0.5)] border border-[#B86B53]/40",
     },
     {
       id: "NDVI" as const,
       label: "NDVI (الغطاء النباتي)",
       icon: "🌱",
       value: satelliteData?.ndvi ? satelliteData.ndvi.mean : null,
-      activeClass: "bg-gradient-to-r from-cyan-400 to-teal-500 text-slate-950 font-black shadow-[0_0_20px_rgba(34,211,238,0.4)]",
+      activeClass: "bg-gradient-to-r from-[#2C3E50] to-[#34495E] text-[#F9F8F6] font-black shadow-[0_0_20px_rgba(44,62,80,0.6)] border border-[#8D5B4C]/40",
     },
     {
       id: "NDWI" as const,
       label: "NDWI (الإجهاد المائي)",
       icon: "💧",
       value: satelliteData?.ndwi ? `${satelliteData.ndwi.hydricStressPct}%` : null,
-      activeClass: "bg-gradient-to-r from-blue-500 to-cyan-500 text-white font-black shadow-[0_0_20px_rgba(59,130,246,0.4)]",
+      activeClass: "bg-gradient-to-r from-[#2C3E50] to-[#1A2530] text-[#F9F8F6] font-black shadow-[0_0_20px_rgba(44,62,80,0.6)] border border-[#8D5B4C]/40",
     },
   ];
 
@@ -61,7 +61,7 @@ export const SpectralLayerSwitcher = React.memo(function SpectralLayerSwitcher({
       {/* Top Floating Glass Bar */}
       <div className="absolute top-3 left-3 right-14 z-20 flex items-center justify-between pointer-events-auto gap-3">
         {/* Layer Switcher Pill Capsule */}
-        <div className="bg-slate-950/90 backdrop-blur-2xl border border-white/15 rounded-2xl p-1.5 flex items-center gap-1.5 shadow-2xl overflow-x-auto scrollbar-none max-w-full">
+        <div className="bg-[#16212b]/95 backdrop-blur-2xl border border-[#2e4052] rounded-2xl p-1.5 flex items-center gap-1.5 shadow-2xl overflow-x-auto scrollbar-none max-w-full">
           {layers.map((layer) => {
             const isActive = satelliteMode === layer.id;
             return (
@@ -72,7 +72,7 @@ export const SpectralLayerSwitcher = React.memo(function SpectralLayerSwitcher({
                 className={`px-3.5 py-1.5 rounded-xl text-[11px] font-bold transition-all duration-300 flex items-center gap-2 whitespace-nowrap active:scale-95 ${
                   isActive
                     ? layer.activeClass
-                    : "text-slate-300 hover:text-white hover:bg-white/10"
+                    : "text-[#D8D2C5] hover:text-[#F9F8F6] hover:bg-[#2C3E50]/40"
                 }`}
               >
                 <span className="text-sm">{layer.icon}</span>
@@ -81,8 +81,8 @@ export const SpectralLayerSwitcher = React.memo(function SpectralLayerSwitcher({
                   <span
                     className={`px-2 py-0.5 rounded-lg text-[10px] font-mono font-bold shadow-inner ${
                       isActive
-                        ? "bg-slate-950/60 text-white"
-                        : "bg-slate-900/80 text-emerald-400 border border-white/10"
+                        ? "bg-[#16212b]/70 text-[#F9F8F6]"
+                        : "bg-[#1f2d3a] text-[#8D5B4C] border border-[#2e4052]"
                     }`}
                   >
                     {layer.value}
