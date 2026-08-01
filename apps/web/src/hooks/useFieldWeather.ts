@@ -14,13 +14,17 @@ export function useFieldWeather({ token }: UseFieldWeatherProps) {
 
   const fetchWeather = useCallback(
     async (field: Field, force = false) => {
-      if (!force && (weatherData[field.id] || loadingWeather[field.id])) {
+      if (!field || (!force && (weatherData[field.id] || loadingWeather[field.id]))) {
         return;
       }
 
       setLoadingWeather((prev) => ({ ...prev, [field.id]: true }));
       try {
-        const poly = polygon((field.geoPolygon as GeoJSON.Polygon).coordinates);
+        const rawPoly = typeof field.geoPolygon === "string" ? JSON.parse(field.geoPolygon) : field.geoPolygon;
+        const coords = rawPoly?.coordinates || rawPoly?.geometry?.coordinates;
+        if (!coords) return;
+
+        const poly = polygon(coords);
         const center = centroid(poly);
         const [lng, lat] = center.geometry.coordinates;
 
@@ -32,8 +36,8 @@ export function useFieldWeather({ token }: UseFieldWeatherProps) {
           const data = (await res.json()) as WeatherData;
           setWeatherData((prev) => ({ ...prev, [field.id]: data }));
         }
-      } catch {
-        // silent
+      } catch (err) {
+        console.warn(`Weather fetch error for field ${field.id}:`, err);
       } finally {
         setLoadingWeather((prev) => ({ ...prev, [field.id]: false }));
       }
