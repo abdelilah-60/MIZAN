@@ -1,9 +1,17 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import './index.css'
+import L from 'leaflet'
+
+if (typeof window !== 'undefined') {
+  (window as any).L = L
+}
+
 import 'leaflet/dist/leaflet.css'
+import 'leaflet-draw'
 import 'leaflet-draw/dist/leaflet.draw.css'
+import './index.css'
 import './i18n/config'
+
 // Intercept global fetch for /api requests in production to route to Railway API
 if (!import.meta.env.DEV || import.meta.env.VITE_API_URL) {
   const originalFetch = window.fetch;

@@ -1,5 +1,8 @@
 import { useEffect, useRef } from "react";
 import L from "leaflet";
+if (typeof window !== "undefined") {
+  (window as any).L = L;
+}
 import "leaflet-draw";
 import { area } from "@turf/area";
 import { polygon as turfPolygon } from "@turf/helpers";
