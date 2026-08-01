@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { logger } from "hono/logger";
 import { cors } from "hono/cors";
 import { jwt } from "hono/jwt";
+import { swaggerUI } from "@hono/swagger-ui";
 import { prisma } from "./lib/prisma";
 import usersRoute from "./routes/users";
 import farmsRoute from "./routes/farms";
@@ -17,12 +18,35 @@ import adminRoute from "./routes/admin";
 import satelliteRoute from "./routes/satellite";
 import { reportsRoute } from "./routes/reports";
 import { notificationsRoute } from "./routes/notifications";
+import { openApiSpec } from "./docs/swagger";
 
 const app = new Hono();
 
 // Middleware
 app.use("*", logger());
 app.use("*", cors());
+
+import { HTTPException } from "hono/http-exception";
+
+// Global Error Handlers
+app.onError((err, c) => {
+  if (err instanceof HTTPException) {
+    return c.json({ error: err.message }, err.status);
+  }
+  console.error(`[Unhandled Error] ${err.message}`, err.stack);
+  return c.json(
+    {
+      error: "Internal Server Error",
+      code: "INTERNAL_ERROR",
+      message: process.env.NODE_ENV === "production" ? undefined : err.message,
+    },
+    500
+  );
+});
+
+app.notFound((c) => {
+  return c.json({ error: "Endpoint Not Found", code: "NOT_FOUND" }, 404);
+});
 
 // 1. PUBLIC ROUTES (Directly on main app)
 app.get("/", (c) => {
@@ -37,6 +61,10 @@ app.get("/api/health", async (c) => {
     return c.json({ status: "error", db: "disconnected" }, 500);
   }
 });
+
+// OpenAPI & Swagger Docs
+app.get("/api/docs/json", (c) => c.json(openApiSpec));
+app.get("/api/docs", swaggerUI({ url: "/api/docs/json" }));
 
 app.route("/api/auth", authRoute);
 

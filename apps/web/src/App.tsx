@@ -10,11 +10,7 @@ import { useToast } from "./hooks/useToast";
 import { Header } from "./components/Header";
 import { SidebarLeft } from "./components/SidebarLeft";
 import { StatusBox } from "./components/StatusBox";
-import { FieldForm } from "./components/FieldForm";
 import { FieldGrid } from "./components/FieldGrid";
-import { FieldWorkspace } from "./components/FieldWorkspace";
-import { ProfilePage } from "./components/ProfilePage";
-import { AnalyticsDashboard } from "./components/AnalyticsDashboard";
 import { LogOperationModal } from "./components/LogOperationModal";
 import { Pagination } from "./components/Pagination";
 import { ToastContainer } from "./components/ToastContainer";
@@ -24,6 +20,10 @@ import AuthScreen from "./components/AuthScreen";
 import type { HealthStatus, Field } from "./lib/types";
 
 const AdminPanel = lazy(() => import("./components/AdminPanel"));
+const AnalyticsDashboard = lazy(() => import("./components/AnalyticsDashboard").then(m => ({ default: m.AnalyticsDashboard })));
+const ProfilePage = lazy(() => import("./components/ProfilePage").then(m => ({ default: m.ProfilePage })));
+const FieldForm = lazy(() => import("./components/FieldForm").then(m => ({ default: m.FieldForm })));
+const FieldWorkspace = lazy(() => import("./components/FieldWorkspace").then(m => ({ default: m.FieldWorkspace })));
 
 export default function App() {
   const auth = useAuth();
@@ -213,29 +213,31 @@ export default function App() {
             {fieldData.activeTab === "fields" && (
               <div className="space-y-6 animate-in fade-in">
                 {fieldData.selectedFieldId ? (
-                  <FieldWorkspace
-                    field={fieldData.fields.find((f) => f.id === fieldData.selectedFieldId) || fieldData.fields[0]}
-                    farms={fieldData.farms}
-                    weatherData={fieldWeather.weatherData[fieldData.selectedFieldId]}
-                    insightsData={fieldInsights.insightsData[fieldData.selectedFieldId]}
-                    operationsData={fieldOperations.operationsData[fieldData.selectedFieldId]}
-                    agronomyData={fieldAgronomy.agronomyData[fieldData.selectedFieldId]}
-                    agronomyForm={fieldAgronomy.agronomyForm}
-                    onAgronomyFormChange={fieldAgronomy.setAgronomyForm}
-                    loadingWeather={fieldWeather.loadingWeather[fieldData.selectedFieldId] || false}
-                    loadingInsights={fieldInsights.loadingInsights[fieldData.selectedFieldId] || false}
-                    loadingOperations={fieldOperations.loadingOperations[fieldData.selectedFieldId] || false}
-                    loadingAgronomy={fieldAgronomy.loadingAgronomy[fieldData.selectedFieldId] || false}
-                    onFetchWeather={fieldWeather.fetchWeather}
-                    onFetchInsights={fieldInsights.fetchInsights}
-                    onFetchOperations={fieldOperations.fetchOperations}
-                    onFetchAgronomy={fieldAgronomy.fetchAgronomy}
-                    onLogOperation={handleOpenLogModal}
-                    onLogOperationDirectly={fieldOperations.logOperationDirectly}
-                    onDeleteOperation={fieldOperations.handleDeleteOperation}
-                    onSaveAgronomy={fieldAgronomy.saveAgronomySection}
-                    onClose={() => handleSelectField(null)}
-                  />
+                  <Suspense fallback={<div className="text-center py-20 text-slate-400 font-medium">Chargement du حقل...</div>}>
+                    <FieldWorkspace
+                      field={fieldData.fields.find((f) => f.id === fieldData.selectedFieldId) || fieldData.fields[0]}
+                      farms={fieldData.farms}
+                      weatherData={fieldWeather.weatherData[fieldData.selectedFieldId]}
+                      insightsData={fieldInsights.insightsData[fieldData.selectedFieldId]}
+                      operationsData={fieldOperations.operationsData[fieldData.selectedFieldId]}
+                      agronomyData={fieldAgronomy.agronomyData[fieldData.selectedFieldId]}
+                      agronomyForm={fieldAgronomy.agronomyForm}
+                      onAgronomyFormChange={fieldAgronomy.setAgronomyForm}
+                      loadingWeather={fieldWeather.loadingWeather[fieldData.selectedFieldId] || false}
+                      loadingInsights={fieldInsights.loadingInsights[fieldData.selectedFieldId] || false}
+                      loadingOperations={fieldOperations.loadingOperations[fieldData.selectedFieldId] || false}
+                      loadingAgronomy={fieldAgronomy.loadingAgronomy[fieldData.selectedFieldId] || false}
+                      onFetchWeather={fieldWeather.fetchWeather}
+                      onFetchInsights={fieldInsights.fetchInsights}
+                      onFetchOperations={fieldOperations.fetchOperations}
+                      onFetchAgronomy={fieldAgronomy.fetchAgronomy}
+                      onLogOperation={handleOpenLogModal}
+                      onLogOperationDirectly={fieldOperations.logOperationDirectly}
+                      onDeleteOperation={fieldOperations.handleDeleteOperation}
+                      onSaveAgronomy={fieldAgronomy.saveAgronomySection}
+                      onClose={() => handleSelectField(null)}
+                    />
+                  </Suspense>
                 ) : (
                   <>
                     {/* Facebook-style Status Box */}
@@ -275,45 +277,51 @@ export default function App() {
                     Retour
                   </button>
                 </div>
-                <FieldForm
-                  newField={fieldData.newField}
-                  onFieldChange={fieldData.setNewField}
-                  farms={fieldData.farms}
-                  onSubmit={async (e) => {
-                    e.preventDefault();
-                    await fieldData.handleCreateField(e);
-                    fieldData.setActiveTab("fields");
-                  }}
-                  isSubmitting={fieldData.isSubmitting}
-                  showOptionalSoilInput={fieldAgronomy.showOptionalSoilInput}
-                  onToggleSoil={() => fieldAgronomy.setShowOptionalSoilInput(!fieldAgronomy.showOptionalSoilInput)}
-                  token={auth.token}
-                />
+                <Suspense fallback={<div className="text-center py-20 text-slate-400 font-medium">Chargement du خريطة...</div>}>
+                  <FieldForm
+                    newField={fieldData.newField}
+                    onFieldChange={fieldData.setNewField}
+                    farms={fieldData.farms}
+                    onSubmit={async (e) => {
+                      e.preventDefault();
+                      await fieldData.handleCreateField(e);
+                      fieldData.setActiveTab("fields");
+                    }}
+                    isSubmitting={fieldData.isSubmitting}
+                    showOptionalSoilInput={fieldAgronomy.showOptionalSoilInput}
+                    onToggleSoil={() => fieldAgronomy.setShowOptionalSoilInput(!fieldAgronomy.showOptionalSoilInput)}
+                    token={auth.token}
+                  />
+                </Suspense>
               </div>
             )}
 
             {/* ========== PROFILE TAB ========== */}
             {fieldData.activeTab === "profile" && (
-              <ProfilePage
-                user={auth.user}
-                farms={fieldData.farms}
-                fields={fieldData.fields}
-                operationsData={fieldOperations.operationsData}
-                onToast={addToast}
-              />
+              <Suspense fallback={<div className="text-center py-20 text-slate-400 font-medium">Chargement...</div>}>
+                <ProfilePage
+                  user={auth.user}
+                  farms={fieldData.farms}
+                  fields={fieldData.fields}
+                  operationsData={fieldOperations.operationsData}
+                  onToast={addToast}
+                />
+              </Suspense>
             )}
 
             {/* ========== ANALYTICS TAB ========== */}
             {fieldData.activeTab === "analytics" && (
-              <AnalyticsDashboard
-                fields={fieldData.fields}
-                operationsData={Object.values(fieldOperations.operationsData).flat()}
-                token={auth.token || ""}
-                onSelectField={(id) => {
-                  fieldData.setSelectedFieldId(id);
-                  fieldData.setActiveTab("fields");
-                }}
-              />
+              <Suspense fallback={<div className="text-center py-20 text-slate-400 font-medium">Chargement des graphiques...</div>}>
+                <AnalyticsDashboard
+                  fields={fieldData.fields}
+                  operationsData={Object.values(fieldOperations.operationsData).flat()}
+                  token={auth.token || ""}
+                  onSelectField={(id) => {
+                    fieldData.setSelectedFieldId(id);
+                    fieldData.setActiveTab("fields");
+                  }}
+                />
+              </Suspense>
             )}
 
             {/* ========== KNOWLEDGE BASE TAB ========== */}

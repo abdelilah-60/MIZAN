@@ -3,6 +3,7 @@ import { prisma } from "../lib/prisma";
 import { Prisma } from "../generated/prisma";
 import { z } from "zod";
 import { zValidator } from "@hono/zod-validator";
+import { apiCache } from "../lib/cache";
 
 
 
@@ -140,6 +141,9 @@ app.post("/", zValidator("json", createOperationSchema, (result, c) => {
       }
     });
 
+    // Invalidate cached recommendations & insights for this field
+    apiCache.invalidatePattern(fieldId);
+
     return c.json(operation, 201);
   } catch (error) {
     console.error("Error creating operation:", error);
@@ -186,6 +190,7 @@ app.delete("/:id", async (c) => {
     if (!operation) return c.json({ error: "Operation not found or unauthorized" }, 404);
 
     await prisma.operation.delete({ where: { id: operation.id } });
+    apiCache.invalidatePattern(operation.fieldId);
     return c.json({ success: true, message: "Operation deleted" }, 200);
   } catch (error) {
     console.error("Error deleting operation:", error);
