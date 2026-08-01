@@ -35,18 +35,19 @@ export function SatelliteMapCanvas({ geoPolygon, satelliteMode, satelliteData }:
       }
     );
 
-    // Initialize Map centered on field
+    // Initialize Map centered on field with full interactive Zoom & Pan enabled
     const map = L.map(containerRef.current, {
       layers: [satelliteTile],
       zoomControl: false,
       attributionControl: false,
-      scrollWheelZoom: false,
+      scrollWheelZoom: true,
       doubleClickZoom: true,
+      touchZoom: true,
       dragging: true,
     });
     mapRef.current = map;
 
-    // 1. Inverted Mask: Mask out EVERYTHING outside field boundaries
+    // 1. Inverted Mask: Mask out EVERYTHING outside field boundaries for tight polygon cropping
     const worldOuterRing: [number, number][] = [
       [-180, -90],
       [180, -90],
@@ -66,8 +67,8 @@ export function SatelliteMapCanvas({ geoPolygon, satelliteMode, satelliteData }:
     L.geoJSON(invertedMaskFeature as any, {
       style: {
         color: "transparent",
-        fillColor: "#16212b",
-        fillOpacity: 0.94,
+        fillColor: "#0b1219",
+        fillOpacity: 0.96,
       },
     }).addTo(map);
 
@@ -82,10 +83,10 @@ export function SatelliteMapCanvas({ geoPolygon, satelliteMode, satelliteData }:
       },
     }).addTo(map);
 
-    // Get polygon bounds and fit map perfectly
+    // Get polygon bounds and fit map perfectly cropped to the field polygon
     const bounds = polygonLayer.getBounds();
     if (bounds.isValid()) {
-      map.fitBounds(bounds, { padding: [30, 30] });
+      map.fitBounds(bounds, { padding: [15, 15] });
     }
 
     // Add pulsing centroid pin
@@ -152,6 +153,26 @@ export function SatelliteMapCanvas({ geoPolygon, satelliteMode, satelliteData }:
       {/* Subtle UI gradient overlays */}
       <div className="absolute inset-0 bg-gradient-to-t from-[#16212b] via-[#16212b]/20 to-transparent pointer-events-none z-10" />
       <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-[#16212b] to-transparent pointer-events-none z-10" />
+
+      {/* Interactive Floating Zoom Controls (Zoom In & Zoom Out) */}
+      <div className="absolute bottom-4 right-4 z-20 flex flex-col gap-1.5 pointer-events-auto">
+        <button
+          type="button"
+          onClick={() => mapRef.current?.zoomIn()}
+          className="w-9 h-9 bg-[#16212b]/95 hover:bg-[#1f2d3a] border border-[#2e4052] text-[#F9F8F6] font-bold text-lg rounded-xl shadow-2xl flex items-center justify-center transition-all active:scale-95 backdrop-blur-2xl"
+          title="Zoom In (تكبير)"
+        >
+          +
+        </button>
+        <button
+          type="button"
+          onClick={() => mapRef.current?.zoomOut()}
+          className="w-9 h-9 bg-[#16212b]/95 hover:bg-[#1f2d3a] border border-[#2e4052] text-[#F9F8F6] font-bold text-lg rounded-xl shadow-2xl flex items-center justify-center transition-all active:scale-95 backdrop-blur-2xl"
+          title="Zoom Out (تصغير)"
+        >
+          −
+        </button>
+      </div>
     </div>
   );
 }

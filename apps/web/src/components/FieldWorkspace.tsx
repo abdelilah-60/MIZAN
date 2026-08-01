@@ -78,6 +78,9 @@ export function FieldWorkspace({
     if (field?.geoPolygon) {
       setLoadingSatellite(true);
       const token = localStorage.getItem("token");
+      const safeGeoPolygon = typeof field.geoPolygon === "string" ? JSON.parse(field.geoPolygon) : field.geoPolygon;
+      const resolvedCropType = field.cropType || (field as any).variety || "Olive";
+
       fetch("/api/satellite/analyze", {
         method: "POST",
         headers: {
@@ -85,8 +88,8 @@ export function FieldWorkspace({
           ...(token ? { Authorization: `Bearer ${token}` } : {})
         },
         body: JSON.stringify({
-          geoPolygon: field.geoPolygon,
-          cropType: field.cropType,
+          geoPolygon: safeGeoPolygon,
+          cropType: resolvedCropType,
           areaHa: field.area
         })
       })
@@ -313,7 +316,7 @@ export function FieldWorkspace({
         {/* Live Full-Bleed Satellite Map Canvas */}
         <div className="relative w-full h-[260px] md:h-[340px]">
           <SatelliteMapCanvas
-            geoPolygon={field.geoPolygon}
+            geoPolygon={typeof field.geoPolygon === "string" ? JSON.parse(field.geoPolygon) : field.geoPolygon}
             satelliteMode={satelliteMode}
             satelliteData={satelliteData}
           />
