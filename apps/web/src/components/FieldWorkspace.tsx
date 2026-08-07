@@ -261,7 +261,7 @@ export function FieldWorkspace({
       default:
         return null;
     }
-  }, [summary?.currentStage, agronomyData, field.cropType, field.id, isAr, t]);
+  }, [summary?.currentStage, agronomyData, field.cropType, isAr, t]);
 
   // Check if there is any irrigation logged today
   const hasIrrigationToday = useMemo(() => {
@@ -489,24 +489,24 @@ export function FieldWorkspace({
         </div>
       </div>
 
-      {/* Integrated Action Banner */}
-      <SmartRecommendationCard
-        smartRec={smartRec}
-        showComplianceBanner={showComplianceBanner}
-        recommendedMinutes={recommendedMinutes}
-        recommendedLiters={recommendedLiters}
-        isAutoLogging={isAutoLogging}
-        handleAutoLog={handleAutoLog}
-        onLogOperation={onLogOperation}
-        onSetIsDismissed={setIsDismissed}
-        field={field}
-      />
-
       {/* Domain Tab Panels */}
       <div className="bg-[#16212b]/90 border border-[#2e4052] rounded-[32px] p-6 backdrop-blur-md min-h-[340px] shadow-2xl">
-        {/* TAB 1: AGRONOMY */}
+        {/* TAB 1: AGRONOMY (IRRIGATION & FERTIGATION RECOMMENDATIONS) */}
         {activeTab === "agronomy" && (
           <div className="space-y-6 animate-in fade-in duration-200">
+            {/* Integrated Recommendation Cards (Shown ONLY inside Irrigation & Fertigation Tab) */}
+            <SmartRecommendationCard
+              smartRec={smartRec}
+              showComplianceBanner={showComplianceBanner}
+              recommendedMinutes={recommendedMinutes}
+              recommendedLiters={recommendedLiters}
+              isAutoLogging={isAutoLogging}
+              handleAutoLog={handleAutoLog}
+              onLogOperation={onLogOperation}
+              onSetIsDismissed={setIsDismissed}
+              field={field}
+            />
+
             {loadingAgronomy ? (
               <div className="text-center py-16 text-[#D8D2C5] animate-pulse font-medium">
                 {t("common.loading")}
