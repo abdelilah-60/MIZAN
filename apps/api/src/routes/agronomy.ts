@@ -211,7 +211,7 @@ agronomyRoute.get("/:fieldId/recommendations", async (c) => {
       tmax: latestDaily?.tmax ?? 25,
       tmin: latestDaily?.tmin ?? 15,
       precipitation: latestDaily?.precipitation ?? 0,
-      tree_density: irrConfig?.treeDensity ?? 200,
+      tree_density: (irrConfig?.treeDensity && irrConfig.treeDensity >= 50 && irrConfig.treeDensity <= 1000) ? irrConfig.treeDensity : 200,
       drippers_per_tree: irrConfig?.drippersPerTree ?? 4,
       dripper_flow_rate: irrConfig?.dripperFlowRate ?? 4.0,
       efficiency: irrConfig?.efficiency ?? 0.85,
@@ -276,22 +276,28 @@ agronomyRoute.get("/:fieldId/recommendations", async (c) => {
     });
     const yieldConfig = await prisma.yieldConfig.findUnique({ where: { fieldId } });
 
+    // Bound treeDensity to realistic agronomic limits (50 to 1000 trees/ha)
+    const rawDensity = irrConfig?.treeDensity || 200;
+    const density = (rawDensity >= 50 && rawDensity <= 1000) ? rawDensity : 200;
+    const drippers = (irrConfig?.drippersPerTree && irrConfig.drippersPerTree > 0) ? irrConfig.drippersPerTree : 4;
+    const flowRate = (irrConfig?.dripperFlowRate && irrConfig.dripperFlowRate > 0) ? irrConfig.dripperFlowRate : 4.0;
+    const eff = (irrConfig?.efficiency && irrConfig.efficiency > 0) ? irrConfig.efficiency : 0.85;
+
+    const netWaterDepthMm = 4.0;
+    const et0 = 5.7; // ET0 consistent with ETc = 4.0 mm/day at Kc = 0.70
+
+    const liters = (netWaterDepthMm * 10000) / density;
+    const hours = liters / (drippers * flowRate * eff);
+
     const waterRec = {
-      et0: 0,
-      etc: 4.0,
+      et0: et0,
+      etc: netWaterDepthMm,
       precipitation: 0,
-      netWaterDepthMm: 4.0,
-      litersPerTree: 0,
-      durationMinutes: 0,
+      netWaterDepthMm: netWaterDepthMm,
+      litersPerTree: parseFloat(liters.toFixed(1)),
+      durationMinutes: Math.round(hours * 60),
       configured: !!irrConfig
     };
-
-    if (irrConfig) {
-      const liters = (4.0 * 10000) / irrConfig.treeDensity;
-      const hours = (liters / (irrConfig.drippersPerTree * irrConfig.dripperFlowRate)) / irrConfig.efficiency;
-      waterRec.litersPerTree = parseFloat(liters.toFixed(1));
-      waterRec.durationMinutes = Math.round(hours * 60);
-    }
 
     const soilTest = soilAnalyses[0];
     const targetYield = yieldConfig?.targetYield ?? 5.0;
