@@ -211,7 +211,7 @@ agronomyRoute.get("/:fieldId/recommendations", async (c) => {
       tmax: latestDaily?.tmax ?? 25,
       tmin: latestDaily?.tmin ?? 15,
       precipitation: latestDaily?.precipitation ?? 0,
-      tree_density: (irrConfig?.treeDensity && irrConfig.treeDensity >= 50 && irrConfig.treeDensity <= 1000) ? irrConfig.treeDensity : 200,
+      tree_density: (irrConfig?.treeDensity && irrConfig.treeDensity >= 50 && irrConfig.treeDensity <= 3500) ? irrConfig.treeDensity : 200,
       drippers_per_tree: irrConfig?.drippersPerTree ?? 4,
       dripper_flow_rate: irrConfig?.dripperFlowRate ?? 4.0,
       efficiency: irrConfig?.efficiency ?? 0.85,
@@ -276,9 +276,9 @@ agronomyRoute.get("/:fieldId/recommendations", async (c) => {
     });
     const yieldConfig = await prisma.yieldConfig.findUnique({ where: { fieldId } });
 
-    // Bound treeDensity to realistic agronomic limits (50 to 1000 trees/ha)
+    // Bound treeDensity to realistic agronomic limits (50 to 3500 trees/ha for SHD orchards)
     const rawDensity = irrConfig?.treeDensity || 200;
-    const density = (rawDensity >= 50 && rawDensity <= 1000) ? rawDensity : 200;
+    const density = (rawDensity >= 50 && rawDensity <= 3500) ? rawDensity : 200;
     const drippers = (irrConfig?.drippersPerTree && irrConfig.drippersPerTree > 0) ? irrConfig.drippersPerTree : 4;
     const flowRate = (irrConfig?.dripperFlowRate && irrConfig.dripperFlowRate > 0) ? irrConfig.dripperFlowRate : 4.0;
     const eff = (irrConfig?.efficiency && irrConfig.efficiency > 0) ? irrConfig.efficiency : 0.85;
