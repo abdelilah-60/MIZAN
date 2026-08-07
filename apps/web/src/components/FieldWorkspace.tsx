@@ -93,6 +93,7 @@ export function FieldWorkspace({
           ...(token ? { Authorization: `Bearer ${token}` } : {})
         },
         body: JSON.stringify({
+          fieldId: field.id,
           geoPolygon: safeGeoPolygon,
           cropType: resolvedCropType,
           areaHa: field.area

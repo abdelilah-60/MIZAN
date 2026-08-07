@@ -290,24 +290,39 @@ def create_canopy_cover_heatmap(f_tree_grid: np.ndarray, grid_ndti: np.ndarray, 
 
 
 def create_savi_heatmap(grid_savi: np.ndarray, poly_mask: np.ndarray, cloud_shadow_mask: np.ndarray = None) -> str:
-    """Generate RGBA heatmap PNG base64 URL for SAVI."""
+    """Generate RGBA heatmap PNG base64 URL for SAVI with dynamic percentile-based coloring."""
     h, w = grid_savi.shape
     rgba = np.zeros((h, w, 4), dtype=np.uint8)
 
+    # Extract valid polygon pixels for relative percentile scaling
+    valid_mask = poly_mask & (grid_savi > 0.02)
+    if cloud_shadow_mask is not None:
+        valid_mask = valid_mask & (~cloud_shadow_mask)
+    valid_vals = grid_savi[valid_mask] if np.any(valid_mask) else np.array([0.15])
+
+    p5 = float(np.percentile(valid_vals, 5))
+    p25 = float(np.percentile(valid_vals, 25))
+    p50 = float(np.percentile(valid_vals, 50))
+    p75 = float(np.percentile(valid_vals, 75))
+    p95 = float(np.percentile(valid_vals, 95))
+
+    # 5-class dynamic color palette based on field-relative percentiles
     for i in range(h):
         for j in range(w):
             if not poly_mask[i, j] or (cloud_shadow_mask is not None and cloud_shadow_mask[i, j]):
                 rgba[i, j] = [0, 0, 0, 0]
                 continue
             val = grid_savi[i, j]
-            if val >= 0.20:
-                rgba[i, j] = [16, 185, 129, 220]   # Emerald Green
-            elif val >= 0.14:
-                rgba[i, j] = [132, 204, 22, 210]   # Lime Green
-            elif val >= 0.09:
-                rgba[i, j] = [234, 179, 8, 210]    # Yellow
+            if val >= p75:
+                rgba[i, j] = [16, 185, 129, 225]    # Emerald Green (Top Quartile)
+            elif val >= p50:
+                rgba[i, j] = [52, 211, 153, 210]    # Medium Green (Above Median)
+            elif val >= p25:
+                rgba[i, j] = [132, 204, 22, 200]    # Lime Green (Below Median)
+            elif val >= p5:
+                rgba[i, j] = [234, 179, 8, 200]     # Amber (Low Vigor)
             else:
-                rgba[i, j] = [148, 163, 184, 120]  # Neutral Soil Gray
+                rgba[i, j] = [148, 163, 184, 130]   # Neutral Soil Gray (Bare/Very Low)
 
     img = Image.fromarray(rgba, mode="RGBA")
     buf = io.BytesIO()
@@ -316,24 +331,39 @@ def create_savi_heatmap(grid_savi: np.ndarray, poly_mask: np.ndarray, cloud_shad
 
 
 def create_ndvi_heatmap(grid_ndvi: np.ndarray, poly_mask: np.ndarray, cloud_shadow_mask: np.ndarray = None) -> str:
-    """Generate RGBA heatmap PNG base64 URL for NDVI."""
+    """Generate RGBA heatmap PNG base64 URL for NDVI with dynamic percentile-based coloring."""
     h, w = grid_ndvi.shape
     rgba = np.zeros((h, w, 4), dtype=np.uint8)
 
+    # Extract valid polygon pixels for relative percentile scaling
+    valid_mask = poly_mask & (grid_ndvi > 0.02)
+    if cloud_shadow_mask is not None:
+        valid_mask = valid_mask & (~cloud_shadow_mask)
+    valid_vals = grid_ndvi[valid_mask] if np.any(valid_mask) else np.array([0.18])
+
+    p5 = float(np.percentile(valid_vals, 5))
+    p25 = float(np.percentile(valid_vals, 25))
+    p50 = float(np.percentile(valid_vals, 50))
+    p75 = float(np.percentile(valid_vals, 75))
+    p95 = float(np.percentile(valid_vals, 95))
+
+    # 5-class dynamic color palette based on field-relative percentiles
     for i in range(h):
         for j in range(w):
             if not poly_mask[i, j] or (cloud_shadow_mask is not None and cloud_shadow_mask[i, j]):
                 rgba[i, j] = [0, 0, 0, 0]
                 continue
             val = grid_ndvi[i, j]
-            if val >= 0.25:
-                rgba[i, j] = [16, 185, 129, 220]   # Emerald Green
-            elif val >= 0.18:
-                rgba[i, j] = [132, 204, 22, 210]   # Lime Green
-            elif val >= 0.12:
-                rgba[i, j] = [234, 179, 8, 210]    # Yellow
+            if val >= p75:
+                rgba[i, j] = [16, 185, 129, 225]    # Emerald Green (Top Quartile)
+            elif val >= p50:
+                rgba[i, j] = [52, 211, 153, 210]    # Medium Green (Above Median)
+            elif val >= p25:
+                rgba[i, j] = [132, 204, 22, 200]    # Lime Green (Below Median)
+            elif val >= p5:
+                rgba[i, j] = [234, 179, 8, 200]     # Amber (Low Vigor)
             else:
-                rgba[i, j] = [148, 163, 184, 120]  # Neutral Soil Gray
+                rgba[i, j] = [148, 163, 184, 130]   # Neutral Soil Gray (Bare/Very Low)
 
     img = Image.fromarray(rgba, mode="RGBA")
     buf = io.BytesIO()
@@ -342,24 +372,40 @@ def create_ndvi_heatmap(grid_ndvi: np.ndarray, poly_mask: np.ndarray, cloud_shad
 
 
 def create_ndwi_heatmap(grid_ndwi: np.ndarray, poly_mask: np.ndarray, cloud_shadow_mask: np.ndarray = None) -> str:
-    """Generate RGBA heatmap PNG base64 URL for NDWI."""
+    """Generate RGBA heatmap PNG base64 URL for NDWI with dynamic percentile-based coloring."""
     h, w = grid_ndwi.shape
     rgba = np.zeros((h, w, 4), dtype=np.uint8)
 
+    # Extract valid polygon pixels for relative percentile scaling
+    valid_mask = poly_mask.copy()
+    if cloud_shadow_mask is not None:
+        valid_mask = valid_mask & (~cloud_shadow_mask)
+    valid_vals = grid_ndwi[valid_mask] if np.any(valid_mask) else np.array([-0.15])
+
+    # NDWI: higher = more moisture, lower = more stress
+    p5 = float(np.percentile(valid_vals, 5))
+    p25 = float(np.percentile(valid_vals, 25))
+    p50 = float(np.percentile(valid_vals, 50))
+    p75 = float(np.percentile(valid_vals, 75))
+    p95 = float(np.percentile(valid_vals, 95))
+
+    # 5-class dynamic color palette: Blue (wet) → Cyan → Green → Amber → Red (dry stress)
     for i in range(h):
         for j in range(w):
             if not poly_mask[i, j] or (cloud_shadow_mask is not None and cloud_shadow_mask[i, j]):
                 rgba[i, j] = [0, 0, 0, 0]
                 continue
             val = grid_ndwi[i, j]
-            if val >= -0.05:
-                rgba[i, j] = [59, 130, 246, 210]   # Blue (Optimal Moisture)
-            elif val >= -0.18:
-                rgba[i, j] = [6, 182, 212, 200]    # Cyan (Balanced Moisture)
-            elif val >= -0.26:
-                rgba[i, j] = [245, 158, 11, 210]   # Amber (Mild Stress)
+            if val >= p75:
+                rgba[i, j] = [59, 130, 246, 215]    # Blue (Optimal Moisture - Top Quartile)
+            elif val >= p50:
+                rgba[i, j] = [6, 182, 212, 205]     # Cyan (Good Moisture - Above Median)
+            elif val >= p25:
+                rgba[i, j] = [34, 197, 94, 200]     # Green (Balanced - Below Median)
+            elif val >= p5:
+                rgba[i, j] = [245, 158, 11, 210]    # Amber (Mild Stress - Low Quartile)
             else:
-                rgba[i, j] = [220, 38, 38, 230]    # Active Warning Red (Severe Stress)
+                rgba[i, j] = [220, 38, 38, 225]     # Red (Severe Stress - Bottom 5%)
 
     img = Image.fromarray(rgba, mode="RGBA")
     buf = io.BytesIO()
@@ -760,7 +806,7 @@ async def analyze_satellite(req: SatelliteAnalysisRequest):
     land_cover_class = phenology_profile.get("landCoverClass", "EVERGREEN_TREE_ORCHARD")
 
     # Generate Individual Tree Crown (ITC) Spatial Nodes
-    tree_crowns = generate_tree_crown_nodes(geo_poly, area_ha, mean_canopy_pct, land_cover_class, crop_type)
+    tree_crowns = generate_tree_crown_nodes(req.geoPolygon, req.areaHa or 1.0, mean_canopy_pct, land_cover_class, crop_type)
 
     return {
         "status": "success",
