@@ -79,9 +79,9 @@ export const DigitalTwinKPIs = React.memo(function DigitalTwinKPIs({
             <span className="text-2xl font-black text-[#F9F8F6] font-mono">
               {isLoading ? <LoadingPulse /> : `${satelliteData?.canopyCover?.meanPct || 0}%`}
             </span>
-            {satelliteData?.treeCrowns?.treeCount > 0 && (
-              <span className="text-xs font-mono font-bold text-[#8D5B4C] bg-[#8D5B4C]/20 border border-[#8D5B4C]/30 px-2 py-0.5 rounded-md">
-                {satelliteData.treeCrowns.treeCount} {isAr ? "شجرة ⭕" : "arbres ⭕"}
+            {satelliteData?.treeCrowns?.meanCanopyDiameterM > 0 && (
+              <span className="text-xs font-mono font-bold text-[#8D5B4C] bg-[#8D5B4C]/20 border border-[#8D5B4C]/30 px-2 py-0.5 rounded-md" title={isAr ? "متوسط قطر عرش الشجرة" : "Diamètre moyen de la canopée"}>
+                Ø {satelliteData.treeCrowns.meanCanopyDiameterM}m
               </span>
             )}
           </div>
@@ -90,18 +90,21 @@ export const DigitalTwinKPIs = React.memo(function DigitalTwinKPIs({
               ? (isAr ? "جارٍ تحليل الغطاء النباتي..." : "Analyse du couvert en cours...")
               : (() => {
                 const category = satelliteData?.treeCrowns?.landCoverCategory;
-                if (category === "BARE_FALLOW_LAND" || (satelliteData?.canopyCover?.meanPct || 0) < 5) {
+                const count = satelliteData?.treeCrowns?.treeCount || 0;
+                const pct = satelliteData?.canopyCover?.meanPct || 0;
+
+                if (category === "BARE_FALLOW_LAND" || pct < 5) {
                   return isAr ? "🏜️ أرض بور فارغة (0 أشجار)" : "🏜️ Sol nu (0 arbre)";
                 }
                 if (category === "SEASONAL_ANNUAL_CROP") {
                   return isAr ? "🌾 محصول حقلي موسمي" : "🌾 Culture saisonnière";
                 }
-                if (satelliteData?.treeCrowns?.meanCanopyDiameterM > 0) {
+                if (count > 0) {
                   return isAr
-                    ? `🌳 ${satelliteData.treeCrowns.treeCount} شجرة مكتشفة (قطر العرش: ${satelliteData.treeCrowns.meanCanopyDiameterM}م)`
-                    : `🌳 ${satelliteData.treeCrowns.treeCount} arbres (Canopée: ${satelliteData.treeCrowns.meanCanopyDiameterM}m)`;
+                    ? `🌳 ${count} شجرة مكتشفة (${pct >= 35 ? "عرش كثيف 🟢" : "عرش متوازن 🟢"})`
+                    : `🌳 ${count} arbres (${pct >= 35 ? "Canopée dense 🟢" : "Canopée équilibrée 🟢"})`;
                 }
-                return satelliteData?.canopyCover?.meanPct >= 35
+                return pct >= 35
                   ? (isAr ? "عرش كثيف متجانس 🟢" : "Canopée dense 🟢")
                   : (isAr ? "عرش متوازن 🟢" : "Canopée équilibrée 🟢");
               })()}
