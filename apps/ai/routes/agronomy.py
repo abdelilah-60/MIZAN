@@ -98,12 +98,8 @@ def calculate_recommendations(request: AgronomicCalculationRequest, session=Depe
     etc = et0 * kc * kr
     net_water_depth = max(0.0, etc - request.precipitation)
 
-    # Variety-aware tree density fallback if density is unconfigured or default
-    density = request.tree_density
-    if density < 50 or density > 3500:
-        density = 1666.0 if is_shd else 200.0
-    elif density == 200.0 and is_shd:
-        density = 1666.0  # Correct default for Arbequina SHD
+    # Use exact registered tree_density from request (defaulting to 200 if omitted)
+    density = request.tree_density if request.tree_density > 0 else 200.0
 
     liters_per_tree = 0.0
     duration_minutes = 0

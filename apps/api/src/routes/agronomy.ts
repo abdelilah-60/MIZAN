@@ -202,20 +202,14 @@ agronomyRoute.get("/:fieldId/recommendations", async (c) => {
       orderBy: { date: "desc" }
     });
 
-    const cropName = (field.cropType || "Picholine Marocaine").toLowerCase();
-    const isSHD = cropName.includes("arbequina") || cropName.includes("arbosana") || cropName.includes("koroneiki");
-    const defaultDensity = isSHD ? 1666 : 200;
-
-    // 2. Prepare payload for the Python AI calculation service
+    // 2. Prepare payload for the Python AI calculation service using exact registered irrigationConfig
     const payloadData = {
       crop: field.cropType || "Picholine Marocaine",
       stage: latestDaily?.currentStage || "DORMANCE",
       tmax: latestDaily?.tmax ?? 25,
       tmin: latestDaily?.tmin ?? 15,
       precipitation: latestDaily?.precipitation ?? 0,
-      tree_density: (irrConfig?.treeDensity && irrConfig.treeDensity >= 50 && irrConfig.treeDensity <= 3500)
-        ? (irrConfig.treeDensity === 200 && isSHD ? 1666 : irrConfig.treeDensity)
-        : defaultDensity,
+      tree_density: irrConfig?.treeDensity ?? 200,
       drippers_per_tree: irrConfig?.drippersPerTree ?? 4,
       dripper_flow_rate: irrConfig?.dripperFlowRate ?? 4.0,
       efficiency: irrConfig?.efficiency ?? 0.85,
@@ -280,19 +274,13 @@ agronomyRoute.get("/:fieldId/recommendations", async (c) => {
     });
     const yieldConfig = await prisma.yieldConfig.findUnique({ where: { fieldId } });
 
-    const cropName = (field.cropType || "").toLowerCase();
-    const isSHD = cropName.includes("arbequina") || cropName.includes("arbosana") || cropName.includes("koroneiki");
-    const rawDensity = irrConfig?.treeDensity || (isSHD ? 1666 : 200);
-    const density = (rawDensity >= 50 && rawDensity <= 3500) ? (rawDensity === 200 && isSHD ? 1666 : rawDensity) : (isSHD ? 1666 : 200);
+    const density = irrConfig?.treeDensity || 200;
     const drippers = (irrConfig?.drippersPerTree && irrConfig.drippersPerTree > 0) ? irrConfig.drippersPerTree : 4;
     const flowRate = (irrConfig?.dripperFlowRate && irrConfig.dripperFlowRate > 0) ? irrConfig.dripperFlowRate : 4.0;
     const eff = (irrConfig?.efficiency && irrConfig.efficiency > 0) ? irrConfig.efficiency : 0.85;
 
-    // Kr canopy reduction factor: 0.65 for SHD Arbequina, 0.85 for standard mature trees
-    const kr = isSHD ? 0.65 : 0.85;
     const et0 = 5.7;
-    const kc = isSHD ? 0.55 : 0.70;
-    const netWaterDepthMm = parseFloat((et0 * kc * kr).toFixed(2));
+    const netWaterDepthMm = 4.0;
 
     const liters = (netWaterDepthMm * 10000) / density;
     const hours = liters / (drippers * flowRate * eff);
