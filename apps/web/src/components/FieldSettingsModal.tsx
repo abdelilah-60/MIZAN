@@ -108,10 +108,25 @@ export const FieldSettingsModal = React.memo(function FieldSettingsModal({
 
         {/* Tab Contents */}
         <div className="p-6 space-y-5 bg-[#16212b]">
-          {/* TAB 1: IRRIGATION SYSTEM */}
+          {/* TAB 1: IRRIGATION SYSTEM & PARCEL AREA */}
           {activeTab === "irrigation" && (
             <div className="space-y-4 animate-in fade-in duration-200">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5 sm:col-span-2">
+                  <label className="text-xs font-bold text-[#D8D2C5] flex items-center gap-1.5">
+                    <span>📐</span>
+                    <span>{isAr ? "مساحة القطعة الإجمالية (هكتار)" : "Superficie de la parcelle (ha)"}</span>
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={form.fieldArea ?? field.area}
+                    onChange={(e) => updateForm({ fieldArea: e.target.value })}
+                    className="w-full bg-[#1f2d3a] border border-[#8D5B4C]/40 rounded-xl px-3.5 py-2.5 text-xs text-[#F9F8F6] font-mono font-bold focus:outline-none focus:ring-1 focus:ring-[#8D5B4C]"
+                    placeholder="e.g. 7.63"
+                  />
+                </div>
+
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-[#D8D2C5]">
                     {isAr ? "تدفق القطارة (لتر/ساعة)" : "Débit goutteur (L/h)"}

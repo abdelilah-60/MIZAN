@@ -114,6 +114,7 @@ export interface AgronomyData {
 }
 
 export interface AgronomyForm {
+  fieldArea?: string;
   dripperFlowRate: string;
   drippersPerTree: string;
   treeDensity: string;

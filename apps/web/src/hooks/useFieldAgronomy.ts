@@ -1,6 +1,7 @@
 import { useState, useCallback, useMemo } from "react";
 import type { Field, AgronomyData, AgronomyForm } from "../lib/types";
 import { getHeaders } from "../lib/api";
+import { db } from "../lib/db";
 
 interface UseFieldAgronomyProps {
   token: string | null;
@@ -55,6 +56,7 @@ export function useFieldAgronomy({ token, toast }: UseFieldAgronomyProps) {
           }));
 
           setAgronomyForm({
+            fieldArea: field.area?.toString() || "",
             dripperFlowRate: config.irrigationConfig?.dripperFlowRate?.toString() || "",
             drippersPerTree: config.irrigationConfig?.drippersPerTree?.toString() || "",
             treeDensity: config.irrigationConfig?.treeDensity?.toString() || "",
@@ -92,6 +94,21 @@ export function useFieldAgronomy({ token, toast }: UseFieldAgronomyProps) {
           treeDensity: agronomyForm.treeDensity,
           efficiency: agronomyForm.efficiency,
         };
+
+        // If fieldArea was edited, update the field area as well
+        if (agronomyForm.fieldArea && !isNaN(parseFloat(agronomyForm.fieldArea))) {
+          const newArea = parseFloat(agronomyForm.fieldArea);
+          try {
+            await fetch(`/api/fields/${fieldId}`, {
+              method: "PATCH",
+              headers,
+              body: JSON.stringify({ area: newArea }),
+            });
+            await db.fields.update(fieldId, { area: newArea });
+          } catch (err) {
+            console.error("Failed to update field area:", err);
+          }
+        }
       } else if (sectionType === "soil") {
         body = {
           analysisDate: agronomyForm.analysisDate || new Date().toISOString().split("T")[0],

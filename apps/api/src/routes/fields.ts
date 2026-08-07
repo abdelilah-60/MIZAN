@@ -159,6 +159,35 @@ fieldsRoute.post("/", zValidator("json", fieldSchema), async (c) => {
   }
 });
 
+// PATCH /:id — Update field properties (e.g. area, name, cropType)
+fieldsRoute.patch("/:id", async (c) => {
+  const id = c.req.param("id");
+  const payload = c.get("jwtPayload");
+  const userId = payload.userId;
+  const body = await c.req.json();
+
+  try {
+    const field = await prisma.field.findFirst({
+      where: { id, farm: { userId } }
+    });
+    
+    if (!field) return c.json({ error: "Field not found or unauthorized" }, 404);
+
+    const updated = await prisma.field.update({
+      where: { id: field.id },
+      data: {
+        ...(body.name ? { name: body.name } : {}),
+        ...(body.area !== undefined ? { area: parseFloat(body.area) } : {}),
+        ...(body.cropType ? { cropType: body.cropType } : {}),
+      }
+    });
+    return c.json(updated, 200);
+  } catch (error) {
+    console.error("Error updating field:", error);
+    return c.json({ error: "Internal Server Error" }, 500);
+  }
+});
+
 // DELETE /:id — Remove a field
 fieldsRoute.delete("/:id", async (c) => {
   const id = c.req.param("id");
