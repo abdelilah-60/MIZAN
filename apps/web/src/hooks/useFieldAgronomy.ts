@@ -55,11 +55,16 @@ export function useFieldAgronomy({ token, toast }: UseFieldAgronomyProps) {
             [field.id]: { ...config, recommendations: rec },
           }));
 
+          const densityVal = config.irrigationConfig?.treeDensity;
+          const areaVal = field.area || 1.0;
+          const calcTotalTrees = densityVal ? Math.round(densityVal * areaVal) : undefined;
+
           setAgronomyForm({
             fieldArea: field.area?.toString() || "",
             dripperFlowRate: config.irrigationConfig?.dripperFlowRate?.toString() || "",
             drippersPerTree: config.irrigationConfig?.drippersPerTree?.toString() || "",
-            treeDensity: config.irrigationConfig?.treeDensity?.toString() || "",
+            treeDensity: densityVal?.toString() || "",
+            totalTrees: calcTotalTrees?.toString() || "",
             efficiency: config.irrigationConfig?.efficiency?.toString() || "0.85",
             ph: config.soilAnalysis?.[0]?.ph?.toString() || "",
             organicMatter: config.soilAnalysis?.[0]?.organicMatter?.toString() || "",
@@ -88,10 +93,19 @@ export function useFieldAgronomy({ token, toast }: UseFieldAgronomyProps) {
       let body: Record<string, unknown> = {};
 
       if (sectionType === "irrigation") {
+        const areaVal = agronomyForm.fieldArea ? parseFloat(agronomyForm.fieldArea) : 1.0;
+        let computedDensity = agronomyForm.treeDensity;
+
+        // If user typed totalTrees (e.g. 16666 trees total), compute density (e.g. 16666 / 7.5 = 2222 trees/ha)
+        if (agronomyForm.totalTrees && !isNaN(parseFloat(agronomyForm.totalTrees)) && areaVal > 0) {
+          const totTrees = parseFloat(agronomyForm.totalTrees);
+          computedDensity = (totTrees / areaVal).toFixed(1);
+        }
+
         body = {
           dripperFlowRate: agronomyForm.dripperFlowRate,
           drippersPerTree: agronomyForm.drippersPerTree,
-          treeDensity: agronomyForm.treeDensity,
+          treeDensity: computedDensity,
           efficiency: agronomyForm.efficiency,
         };
 

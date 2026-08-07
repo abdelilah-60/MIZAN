@@ -127,6 +127,62 @@ export const FieldSettingsModal = React.memo(function FieldSettingsModal({
                   />
                 </div>
 
+                {/* TOTAL TREES IN PARCEL (USER DIRECT INPUT) */}
+                <div className="space-y-1.5 sm:col-span-2 bg-[#16212b] p-3.5 rounded-2xl border border-[#8D5B4C]/30">
+                  <label className="text-xs font-bold text-[#F9F8F6] flex items-center justify-between">
+                    <span className="flex items-center gap-1.5">
+                      <span>🌴</span>
+                      <span>{isAr ? "إجمالي عدد الأشجار الإجمالي في القطعة" : "Nombre total d'arbres dans la parcelle"}</span>
+                    </span>
+                    <span className="text-[10px] text-[#8D5B4C] font-mono">
+                      {isAr ? "العدد الكلي للضيعة" : "Total parcelle"}
+                    </span>
+                  </label>
+                  <input
+                    type="number"
+                    value={form.totalTrees ?? (form.treeDensity && field.area ? Math.round(parseFloat(form.treeDensity) * field.area) : "")}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      const areaNum = parseFloat(form.fieldArea || "") || field.area || 1.0;
+                      if (val && !isNaN(parseFloat(val)) && areaNum > 0) {
+                        const calculatedDensity = Math.round(parseFloat(val) / areaNum);
+                        updateForm({ totalTrees: val, treeDensity: calculatedDensity.toString() });
+                      } else {
+                        updateForm({ totalTrees: val });
+                      }
+                    }}
+                    className="w-full bg-[#1f2d3a] border border-[#8D5B4C]/50 rounded-xl px-3.5 py-2.5 text-xs text-[#F9F8F6] font-mono font-bold focus:outline-none focus:ring-1 focus:ring-[#8D5B4C]"
+                    placeholder="مثال: 16666 شجرة"
+                  />
+                  <p className="text-[10px] text-[#A8A093]">
+                    {isAr
+                      ? "أدخل العدد الإجمالي الكامل للأشجار وسيحسب النظام الكثافة للهكتار تلقائياً"
+                      : "Entrez le nombre total d'arbres, la densité par hectare sera calculée automatiquement."}
+                  </p>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-[#D8D2C5]">
+                    {isAr ? "كثافة غرس الأشجار (شجرة/هكتار)" : "Densité (arbres/ha)"}
+                  </label>
+                  <input
+                    type="number"
+                    value={form.treeDensity}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      const areaNum = parseFloat(form.fieldArea || "") || field.area || 1.0;
+                      if (val && !isNaN(parseFloat(val)) && areaNum > 0) {
+                        const calculatedTotal = Math.round(parseFloat(val) * areaNum);
+                        updateForm({ treeDensity: val, totalTrees: calculatedTotal.toString() });
+                      } else {
+                        updateForm({ treeDensity: val });
+                      }
+                    }}
+                    className="w-full bg-[#1f2d3a] border border-[#2e4052] rounded-xl px-3.5 py-2.5 text-xs text-[#F9F8F6] focus:outline-none focus:ring-1 focus:ring-[#8D5B4C]"
+                    placeholder="مثال: 2222"
+                  />
+                </div>
+
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-[#D8D2C5]">
                     {isAr ? "تدفق القطارة (لتر/ساعة)" : "Débit goutteur (L/h)"}
@@ -152,19 +208,7 @@ export const FieldSettingsModal = React.memo(function FieldSettingsModal({
                   />
                 </div>
 
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-[#D8D2C5]">
-                    {isAr ? "كثافة غرس الأشجار (شجرة/هكتار)" : "Densité (arbres/ha)"}
-                  </label>
-                  <input
-                    type="number"
-                    value={form.treeDensity}
-                    onChange={(e) => updateForm({ treeDensity: e.target.value })}
-                    className="w-full bg-[#1f2d3a] border border-[#2e4052] rounded-xl px-3.5 py-2.5 text-xs text-[#F9F8F6] focus:outline-none focus:ring-1 focus:ring-[#8D5B4C]"
-                  />
-                </div>
-
-                <div className="space-y-1.5">
+                <div className="space-y-1.5 sm:col-span-2">
                   <label className="text-xs font-bold text-[#D8D2C5]">
                     {isAr ? "كفاءة نظام الري (من 0.5 إلى 1.0)" : "Efficacité du système"}
                   </label>

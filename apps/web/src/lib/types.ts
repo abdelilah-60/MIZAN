@@ -118,6 +118,7 @@ export interface AgronomyForm {
   dripperFlowRate: string;
   drippersPerTree: string;
   treeDensity: string;
+  totalTrees?: string;
   efficiency: string;
   ph: string;
   organicMatter: string;
