@@ -43,7 +43,7 @@ interface FieldWorkspaceProps {
   onClose: () => void;
 }
 
-type WorkspaceTab = "agronomy" | "insights" | "operations";
+export type WorkspaceTab = "agronomy" | "insights" | "weather" | "operations";
 
 export function FieldWorkspace({
   field,
@@ -72,6 +72,7 @@ export function FieldWorkspace({
   const [satelliteMode, setSatelliteMode] = useState<"SATELLITE" | "CANOPY" | "SAVI" | "NDVI" | "NDWI">("CANOPY");
   const [satelliteData, setSatelliteData] = useState<any>(null);
   const [loadingSatellite, setLoadingSatellite] = useState<boolean>(false);
+  const [isMapExpanded, setIsMapExpanded] = useState<boolean>(false);
 
   // Auto-fetch satellite spectral data for field
   useEffect(() => {
@@ -264,12 +265,13 @@ export function FieldWorkspace({
         type: "IRRIGATION",
         fieldId: field.id,
         metadata: {
-          volume: recommendedLiters,
-          duration: recommendedMinutes,
-          unit: "Liters"
+          volumeM3: String(Math.round((recommendedLiters * ((agronomyData?.recommendations?.water as any)?.treeDensity || 200) * field.area) / 1000)),
+          durationMinutes: String(recommendedMinutes),
+          waterSource: "WELL",
+          notes: "Enregistrement automatique via recommandation Mizan"
         }
       });
-      // Operations reload will automatically trigger hasIrrigationToday to become true
+      setIsDismissed(true);
     } catch (e) {
       console.error("Auto-logging failed:", e);
     } finally {
@@ -283,13 +285,10 @@ export function FieldWorkspace({
       onFetchAgronomy(field);
     } else if (activeTab === "insights" && !insightsData && !loadingInsights) {
       onFetchInsights(field);
-    } else if (activeTab === "operations") {
-      if (!operationsData && !loadingOperations) {
-        onFetchOperations(field);
-      }
-      if (!weatherData && !loadingWeather) {
-        onFetchWeather(field);
-      }
+    } else if (activeTab === "weather" && !weatherData && !loadingWeather) {
+      onFetchWeather(field);
+    } else if (activeTab === "operations" && !operationsData && !loadingOperations) {
+      onFetchOperations(field);
     }
   }, [
     activeTab,
@@ -310,11 +309,11 @@ export function FieldWorkspace({
 
   return (
     <div className="space-y-6 animate-in fade-in zoom-in-95 duration-200">
-      {/* Header Card with Ultra-Premium Glassmorphism & Digital Twin UX */}
-      <div className="rounded-[32px] overflow-hidden border border-emerald-500/20 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.9)] bg-slate-950 relative">
+      {/* 1. Header Card with Ultra-Premium Glassmorphism & Digital Twin UX */}
+      <div className="rounded-[32px] overflow-hidden border border-[#2e4052] shadow-[0_25px_60px_-15px_rgba(0,0,0,0.9)] bg-[#16212b] relative">
 
         {/* Live Full-Bleed Satellite Map Canvas */}
-        <div className="relative w-full h-[260px] md:h-[340px]">
+        <div className={`relative w-full transition-all duration-300 ${isMapExpanded ? "h-[500px]" : "h-[280px] md:h-[360px]"}`}>
           <SatelliteMapCanvas
             geoPolygon={typeof field.geoPolygon === "string" ? JSON.parse(field.geoPolygon) : field.geoPolygon}
             satelliteMode={satelliteMode}
@@ -322,7 +321,7 @@ export function FieldWorkspace({
           />
 
           {/* Bottom Vignette Gradient Overlay */}
-          <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-slate-950 via-slate-950/60 to-transparent pointer-events-none z-10" />
+          <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-[#16212b] via-[#16212b]/60 to-transparent pointer-events-none z-10" />
 
           <SpectralLayerSwitcher
             satelliteMode={satelliteMode}
@@ -332,57 +331,73 @@ export function FieldWorkspace({
             onClose={onClose}
           />
 
-          {/* Floating Stage Stats Badge on Map Canvas */}
-          <div className="absolute bottom-4 right-4 flex gap-2 z-20">
+          {/* Map Expand & Stage Badges on Map Canvas */}
+          <div className="absolute bottom-4 right-4 flex items-center gap-2 z-20">
             {summary && (
-              <div className="bg-slate-950/80 backdrop-blur-md px-3 py-1.5 rounded-2xl border border-amber-500/30 text-[11px] font-bold text-amber-400 shadow-xl flex items-center gap-1.5">
+              <div className="bg-[#16212b]/90 backdrop-blur-md px-3.5 py-1.5 rounded-2xl border border-[#8D5B4C]/40 text-xs font-bold text-[#F9F8F6] shadow-xl flex items-center gap-2">
                 <span>{stageLabels[summary.currentStage]?.split(" ")[0] || "🌱"}</span>
                 <span>{stageLabels[summary.currentStage] || summary.currentStage}</span>
               </div>
             )}
+            <button
+              type="button"
+              onClick={() => setIsMapExpanded(!isMapExpanded)}
+              className="bg-[#16212b]/95 hover:bg-[#1f2d3a] border border-[#2e4052] text-[#D8D2C5] hover:text-[#F9F8F6] px-3 py-1.5 rounded-2xl text-xs font-bold shadow-xl transition-all flex items-center gap-1.5"
+              title={isMapExpanded ? "Réduire la carte" : "Agrandir la carte"}
+            >
+              <span>{isMapExpanded ? "↙️" : "↗️"}</span>
+              <span className="hidden sm:inline">{isMapExpanded ? "تصغير الخريطة" : "تكبير الخريطة"}</span>
+            </button>
           </div>
         </div>
 
         {/* Digital Twin KPI Grid & Profile Info Area */}
-        <div className="relative p-6 bg-slate-950 space-y-5">
+        <div className="relative p-6 bg-[#16212b] space-y-6">
           
-          {/* Main Title Header with Crop Avatar */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/10 pb-5">
-            <div className="flex items-center gap-4">
-              <div className="h-16 w-16 rounded-3xl border-2 border-emerald-500/40 bg-gradient-to-br from-emerald-500/20 to-teal-900/40 backdrop-blur-md flex items-center justify-center text-3xl shadow-xl flex-shrink-0">
+          {/* Main Title Header with Crop Avatar & Metadata Badges */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#2e4052] pb-5">
+            <div className="flex items-start md:items-center gap-4">
+              <div className="h-16 w-16 rounded-3xl border-2 border-[#8D5B4C]/40 bg-gradient-to-br from-[#8D5B4C]/20 to-[#2C3E50]/60 backdrop-blur-md flex items-center justify-center text-3xl shadow-xl flex-shrink-0">
                 🫒
               </div>
-              <div>
-                <h2 className="text-xl md:text-2xl font-black text-white flex items-center gap-3 flex-wrap">
-                  <span>{field.name}</span>
-                  <span className="text-[10px] font-black px-2.5 py-1 bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 rounded-lg uppercase tracking-widest shadow-inner">
-                    {field.cropType || "Picholine Marocaine"}
+              <div className="space-y-1">
+                <div className="flex items-center gap-3 flex-wrap">
+                  <h2 className="text-xl md:text-2xl font-black text-[#F9F8F6]">
+                    {field.name}
+                  </h2>
+                  <span className="text-[11px] font-black px-3 py-1 bg-[#8D5B4C]/20 text-[#F9F8F6] border border-[#8D5B4C]/40 rounded-xl uppercase tracking-wider shadow-inner">
+                    {field.cropType || (field as any).variety || "ARBEQUINA"}
                   </span>
-                </h2>
-                <p className="text-xs text-slate-400 font-medium mt-1 flex items-center gap-2 flex-wrap">
-                  <span>📐 {field.area} ha</span>
+                </div>
+                
+                {/* Rich Metadata Pills */}
+                <div className="flex items-center gap-2 text-xs text-[#D8D2C5] font-medium flex-wrap">
+                  <span className="bg-[#1f2d3a] px-2.5 py-0.5 rounded-lg border border-[#2e4052]">📐 {field.area} هكتار</span>
                   {field.plantingDate && (
-                    <>
-                      <span>&bull;</span>
-                      <span>🌱 غرس: {formatDate(field.plantingDate, "fr-FR", { month: "short", year: "numeric" })}</span>
-                    </>
+                    <span className="bg-[#1f2d3a] px-2.5 py-0.5 rounded-lg border border-[#2e4052]">
+                      🌱 غرس: {formatDate(field.plantingDate, "fr-FR", { month: "short", year: "numeric" })}
+                    </span>
                   )}
-                </p>
+                  <span className="bg-[#1f2d3a] px-2.5 py-0.5 rounded-lg border border-[#2e4052]">💧 ري بالتنقيط</span>
+                  <span className="bg-[#1f2d3a] px-2.5 py-0.5 rounded-lg border border-[#2e4052]">📍 المغرب</span>
+                </div>
               </div>
             </div>
 
             {/* Quick Action Buttons */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2.5">
               <button
+                type="button"
                 onClick={() => setShowReport(true)}
-                className="bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-300 text-xs font-bold px-3.5 py-2 rounded-xl transition-all flex items-center gap-2 shadow-lg active:scale-95"
+                className="bg-gradient-to-r from-[#8D5B4C] to-[#A0522D] hover:from-[#9e6757] hover:to-[#b35d35] text-[#F9F8F6] text-xs font-bold px-4 py-2.5 rounded-2xl transition-all flex items-center gap-2 shadow-xl active:scale-95 border border-[#B86B53]/30"
               >
                 <span>📄</span>
-                <span>Rapport PDF (التقرير الموسمية)</span>
+                <span>Rapport PDF (التقرير)</span>
               </button>
               <button
+                type="button"
                 onClick={() => setShowIndexGuide(true)}
-                className="bg-slate-900 hover:bg-slate-800 border border-white/10 hover:border-white/20 text-slate-200 text-xs font-bold px-3.5 py-2 rounded-xl transition-all flex items-center gap-2 shadow-lg active:scale-95"
+                className="bg-[#1f2d3a] hover:bg-[#28394a] border border-[#2e4052] text-[#D8D2C5] hover:text-[#F9F8F6] text-xs font-bold px-4 py-2.5 rounded-2xl transition-all flex items-center gap-2 shadow-xl active:scale-95"
               >
                 <span>📖</span>
                 <span>دليل المؤشرات</span>
@@ -390,53 +405,71 @@ export function FieldWorkspace({
             </div>
           </div>
 
+          {/* Digital Twin KPIs */}
           <DigitalTwinKPIs
             satelliteData={satelliteData}
             summary={summary}
             stageLabels={stageLabels}
           />
 
-          {/* Tab Switcher */}
-          <div className="flex gap-1.5 mt-4 pt-3 border-t border-white/5 overflow-x-auto scrollbar-none">
+          {/* 4 Structured Domain Tabs */}
+          <div className="flex gap-2 pt-2 border-t border-[#2e4052] overflow-x-auto scrollbar-none">
             <button
+              type="button"
               onClick={() => setActiveTab("agronomy")}
-              className={`px-3 py-1.5 rounded-xl text-[10px] md:text-xs font-bold transition-all flex items-center gap-1.5 border whitespace-nowrap ${
+              className={`px-4 py-2.5 rounded-2xl text-xs font-bold transition-all flex items-center gap-2 border whitespace-nowrap active:scale-95 ${
                 activeTab === "agronomy"
-                  ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20 shadow-md"
-                  : "bg-transparent text-slate-400 hover:text-slate-200 border-transparent hover:bg-white/5"
+                  ? "bg-gradient-to-r from-[#8D5B4C] to-[#A0522D] text-[#F9F8F6] border-[#B86B53]/40 shadow-lg"
+                  : "bg-[#1f2d3a]/60 text-[#D8D2C5] hover:text-[#F9F8F6] hover:bg-[#1f2d3a] border-[#2e4052]"
               }`}
             >
               <span>💧</span>
-              <span>Recommandations (التوصيات)</span>
+              <span>1. Recommandations (الري والتسميد)</span>
             </button>
 
             <button
+              type="button"
               onClick={() => setActiveTab("insights")}
-              className={`px-3 py-1.5 rounded-xl text-[10px] md:text-xs font-bold transition-all flex items-center gap-1.5 border whitespace-nowrap ${
+              className={`px-4 py-2.5 rounded-2xl text-xs font-bold transition-all flex items-center gap-2 border whitespace-nowrap active:scale-95 ${
                 activeTab === "insights"
-                  ? "bg-purple-500/10 text-purple-400 border-purple-500/20 shadow-md"
-                  : "bg-transparent text-slate-400 hover:text-slate-200 border-transparent hover:bg-white/5"
+                  ? "bg-gradient-to-r from-[#8D5B4C] to-[#A0522D] text-[#F9F8F6] border-[#B86B53]/40 shadow-lg"
+                  : "bg-[#1f2d3a]/60 text-[#D8D2C5] hover:text-[#F9F8F6] hover:bg-[#1f2d3a] border-[#2e4052]"
               }`}
             >
-              <span>🧠</span>
-              <span>Santé & Risques (الأمراض)</span>
+              <span>🛡️</span>
+              <span>2. Santé & Risques (الأمراض والمخاطر)</span>
             </button>
 
             <button
+              type="button"
+              onClick={() => setActiveTab("weather")}
+              className={`px-4 py-2.5 rounded-2xl text-xs font-bold transition-all flex items-center gap-2 border whitespace-nowrap active:scale-95 ${
+                activeTab === "weather"
+                  ? "bg-gradient-to-r from-[#8D5B4C] to-[#A0522D] text-[#F9F8F6] border-[#B86B53]/40 shadow-lg"
+                  : "bg-[#1f2d3a]/60 text-[#D8D2C5] hover:text-[#F9F8F6] hover:bg-[#1f2d3a] border-[#2e4052]"
+              }`}
+            >
+              <span>⛅</span>
+              <span>3. Microclimat & Météo (الطقس والمناخ)</span>
+            </button>
+
+            <button
+              type="button"
               onClick={() => setActiveTab("operations")}
-              className={`px-3 py-1.5 rounded-xl text-[10px] md:text-xs font-bold transition-all flex items-center gap-1.5 border whitespace-nowrap ${
+              className={`px-4 py-2.5 rounded-2xl text-xs font-bold transition-all flex items-center gap-2 border whitespace-nowrap active:scale-95 ${
                 activeTab === "operations"
-                  ? "bg-blue-500/10 text-blue-400 border-blue-500/20 shadow-md"
-                  : "bg-transparent text-slate-400 hover:text-slate-200 border-transparent hover:bg-white/5"
+                  ? "bg-gradient-to-r from-[#8D5B4C] to-[#A0522D] text-[#F9F8F6] border-[#B86B53]/40 shadow-lg"
+                  : "bg-[#1f2d3a]/60 text-[#D8D2C5] hover:text-[#F9F8F6] hover:bg-[#1f2d3a] border-[#2e4052]"
               }`}
             >
               <span>📋</span>
-              <span>Activité & Logs (السجل)</span>
+              <span>4. Activité & Logs (سجل العمليات الميدانية)</span>
             </button>
           </div>
         </div>
       </div>
 
+      {/* Integrated Action Banner */}
       <SmartRecommendationCard
         smartRec={smartRec}
         showComplianceBanner={showComplianceBanner}
@@ -449,13 +482,14 @@ export function FieldWorkspace({
         field={field}
       />
 
-      {/* Tab Panels */}
-      <div className="bg-slate-900/40 border border-white/10 rounded-3xl p-6 backdrop-blur-sm min-h-[300px] shadow-xl">
+      {/* Domain Tab Panels */}
+      <div className="bg-[#16212b]/90 border border-[#2e4052] rounded-[32px] p-6 backdrop-blur-md min-h-[340px] shadow-2xl">
+        {/* TAB 1: AGRONOMY */}
         {activeTab === "agronomy" && (
           <div className="space-y-6 animate-in fade-in duration-200">
             {loadingAgronomy ? (
-              <div className="text-center py-16 text-slate-500 animate-pulse">
-                Chargement des recommandations agronomiques...
+              <div className="text-center py-16 text-[#D8D2C5] animate-pulse font-medium">
+                Chargement des recommandations agronomiques et برنامج التسميد...
               </div>
             ) : agronomyData ? (
               <AgronomyPanel
@@ -468,82 +502,98 @@ export function FieldWorkspace({
                 field={field}
               />
             ) : (
-              <div className="text-center py-16 text-slate-500">
+              <div className="text-center py-16 text-[#D8D2C5]">
                 Impossible de charger les données agronomiques.
               </div>
             )}
           </div>
         )}
 
+        {/* TAB 2: HEALTH & RISKS */}
         {activeTab === "insights" && (
           <div className="space-y-6 animate-in fade-in duration-200">
             {loadingInsights ? (
-              <div className="text-center py-16 text-slate-500 animate-pulse">
+              <div className="text-center py-16 text-[#D8D2C5] animate-pulse font-medium">
                 Chargement de l'analyse AI et prévisions maladies...
               </div>
             ) : insightsData ? (
               <InsightsPanel data={insightsData} cropType={field.cropType} />
             ) : (
-              <div className="text-center py-16 text-slate-500">
+              <div className="text-center py-16 text-[#D8D2C5]">
                 L'analyse des risques n'a pas encore été générée. Veuillez vérifier la santé du حقل.
               </div>
             )}
           </div>
         )}
 
-        {activeTab === "operations" && (
-          <div className="space-y-8 animate-in fade-in duration-200">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Weather Panel */}
-              <div className="space-y-3">
-                <h4 className="text-xs font-bold text-slate-400 flex items-center gap-1.5 uppercase tracking-wider">
+        {/* TAB 3: MICROCLIMATE & WEATHER */}
+        {activeTab === "weather" && (
+          <div className="space-y-6 animate-in fade-in duration-200">
+            <div className="flex items-center justify-between border-b border-[#2e4052] pb-4">
+              <div>
+                <h3 className="text-lg font-black text-[#F9F8F6] flex items-center gap-2">
                   <span>⛅</span>
-                  <span>Conditions Météo en Direct (الطقس الحقيقي)</span>
-                </h4>
-                {loadingWeather ? (
-                  <div className="text-center py-8 text-slate-500 animate-pulse">
-                    Mise à jour des données météo...
-                  </div>
-                ) : weatherData ? (
-                  <WeatherPanel data={weatherData} />
-                ) : (
-                  <div className="text-center py-8 text-slate-500">
-                    Météo non chargée.
-                  </div>
-                )}
-              </div>
-
-              {/* Timeline Operations Panel */}
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-xs font-bold text-slate-400 flex items-center gap-1.5 uppercase tracking-wider">
-                    <span>📋</span>
-                    <span>Sujet d'Activité & Logs (العمليات)</span>
-                  </h4>
-                  <button
-                    onClick={() => onLogOperation(field)}
-                    className="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-[10px] font-bold rounded-lg shadow-md transition-all active:scale-[0.98]"
-                  >
-                    + Log Action (إضافة عملية)
-                  </button>
-                </div>
-                {loadingOperations ? (
-                  <div className="text-center py-8 text-slate-500 animate-pulse">
-                    Chargement du journal...
-                  </div>
-                ) : operationsData ? (
-                  <OperationsPanel
-                    data={operationsData}
-                    onDelete={onDeleteOperation}
-                    fieldId={field.id}
-                  />
-                ) : (
-                  <div className="text-center py-8 text-slate-500">
-                    Aucune opération récente loggée.
-                  </div>
-                )}
+                  <span>Conditions Météo & Microclimat (الطقس والمناخ الدقيق)</span>
+                </h3>
+                <p className="text-xs text-[#D8D2C5] mt-1">
+                  توقعات الطقس لـ 7 أيام والمؤشرات الحرارية والمناخية لحقل {field.name}
+                </p>
               </div>
             </div>
+
+            {loadingWeather ? (
+              <div className="text-center py-16 text-[#D8D2C5] animate-pulse font-medium">
+                Mise à jour des données météo en direct...
+              </div>
+            ) : weatherData ? (
+              <WeatherPanel data={weatherData} />
+            ) : (
+              <div className="text-center py-16 text-[#D8D2C5]">
+                Météo non chargée.
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* TAB 4: OPERATIONS & TIMELINE LOGS */}
+        {activeTab === "operations" && (
+          <div className="space-y-6 animate-in fade-in duration-200">
+            <div className="flex items-center justify-between border-b border-[#2e4052] pb-4 flex-wrap gap-3">
+              <div>
+                <h3 className="text-lg font-black text-[#F9F8F6] flex items-center gap-2">
+                  <span>📋</span>
+                  <span>Journal d'Activité & Logs (سجل العمليات الميدانية)</span>
+                </h3>
+                <p className="text-xs text-[#D8D2C5] mt-1">
+                  تتبع جميع العمليات الفلاحية المدونة لحقل {field.name} (ري، تسميد، معالجة، جني)
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => onLogOperation(field)}
+                className="px-4 py-2.5 bg-gradient-to-r from-[#8D5B4C] to-[#A0522D] hover:from-[#9e6757] hover:to-[#b35d35] text-[#F9F8F6] text-xs font-bold rounded-2xl shadow-lg transition-all active:scale-95 flex items-center gap-2"
+              >
+                <span>+</span>
+                <span>Log Action (إضافة عملية ميدانية)</span>
+              </button>
+            </div>
+
+            {loadingOperations ? (
+              <div className="text-center py-16 text-[#D8D2C5] animate-pulse font-medium">
+                Chargement du journal d'activité...
+              </div>
+            ) : operationsData ? (
+              <OperationsPanel
+                data={operationsData}
+                onDelete={onDeleteOperation}
+                fieldId={field.id}
+              />
+            ) : (
+              <div className="text-center py-16 text-[#D8D2C5]">
+                Aucune opération récente loggée.
+              </div>
+            )}
           </div>
         )}
       </div>
