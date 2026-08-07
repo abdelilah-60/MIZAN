@@ -289,40 +289,46 @@ def create_canopy_cover_heatmap(f_tree_grid: np.ndarray, grid_ndti: np.ndarray, 
     return f"data:image/png;base64,{base64.b64encode(buf.getvalue()).decode()}"
 
 
+def _lerp_rgba(c1, c2, t):
+    """Linear interpolation between two RGBA colors."""
+    t = max(0.0, min(1.0, t))
+    return [int(c1[k] + (c2[k] - c1[k]) * t) for k in range(4)]
+
+
 def create_savi_heatmap(grid_savi: np.ndarray, poly_mask: np.ndarray, cloud_shadow_mask: np.ndarray = None) -> str:
-    """Generate RGBA heatmap PNG base64 URL for SAVI with dynamic percentile-based coloring."""
+    """
+    Hybrid Continuous-Gradient SAVI Heatmap.
+    Uses absolute agronomic zones with smooth intra-zone interpolation.
+    Healthy pixels NEVER show alarming colors; variation comes from gradient shading.
+    """
     h, w = grid_savi.shape
     rgba = np.zeros((h, w, 4), dtype=np.uint8)
 
-    # Extract valid polygon pixels for relative percentile scaling
-    valid_mask = poly_mask & (grid_savi > 0.02)
-    if cloud_shadow_mask is not None:
-        valid_mask = valid_mask & (~cloud_shadow_mask)
-    valid_vals = grid_savi[valid_mask] if np.any(valid_mask) else np.array([0.15])
+    # Absolute agronomic zone boundaries for SAVI
+    Z = [(0.08, [148, 163, 184, 130], [190, 160, 100, 170]),   # Bare → Amber-gray
+         (0.14, [190, 160, 100, 170], [234, 179, 8, 210]),     # Low → Amber
+         (0.20, [234, 179, 8, 210],   [132, 204, 22, 215]),    # Moderate → Lime
+         (0.28, [132, 204, 22, 215],  [52, 211, 153, 220]),    # Good → Medium Green
+         (1.00, [52, 211, 153, 220],  [16, 185, 129, 230])]   # Excellent → Emerald
 
-    p5 = float(np.percentile(valid_vals, 5))
-    p25 = float(np.percentile(valid_vals, 25))
-    p50 = float(np.percentile(valid_vals, 50))
-    p75 = float(np.percentile(valid_vals, 75))
-    p95 = float(np.percentile(valid_vals, 95))
-
-    # 5-class dynamic color palette based on field-relative percentiles
     for i in range(h):
         for j in range(w):
             if not poly_mask[i, j] or (cloud_shadow_mask is not None and cloud_shadow_mask[i, j]):
                 rgba[i, j] = [0, 0, 0, 0]
                 continue
             val = grid_savi[i, j]
-            if val >= p75:
-                rgba[i, j] = [16, 185, 129, 225]    # Emerald Green (Top Quartile)
-            elif val >= p50:
-                rgba[i, j] = [52, 211, 153, 210]    # Medium Green (Above Median)
-            elif val >= p25:
-                rgba[i, j] = [132, 204, 22, 200]    # Lime Green (Below Median)
-            elif val >= p5:
-                rgba[i, j] = [234, 179, 8, 200]     # Amber (Low Vigor)
+            if val < 0.02:
+                rgba[i, j] = [148, 163, 184, 100]
+                continue
+            prev_thresh = 0.02
+            for thresh, c_low, c_high in Z:
+                if val < thresh:
+                    t = (val - prev_thresh) / max(0.001, thresh - prev_thresh)
+                    rgba[i, j] = _lerp_rgba(c_low, c_high, t)
+                    break
+                prev_thresh = thresh
             else:
-                rgba[i, j] = [148, 163, 184, 130]   # Neutral Soil Gray (Bare/Very Low)
+                rgba[i, j] = [16, 185, 129, 230]
 
     img = Image.fromarray(rgba, mode="RGBA")
     buf = io.BytesIO()
@@ -331,39 +337,38 @@ def create_savi_heatmap(grid_savi: np.ndarray, poly_mask: np.ndarray, cloud_shad
 
 
 def create_ndvi_heatmap(grid_ndvi: np.ndarray, poly_mask: np.ndarray, cloud_shadow_mask: np.ndarray = None) -> str:
-    """Generate RGBA heatmap PNG base64 URL for NDVI with dynamic percentile-based coloring."""
+    """
+    Hybrid Continuous-Gradient NDVI Heatmap.
+    Uses absolute agronomic thresholds with smooth intra-zone interpolation.
+    """
     h, w = grid_ndvi.shape
     rgba = np.zeros((h, w, 4), dtype=np.uint8)
 
-    # Extract valid polygon pixels for relative percentile scaling
-    valid_mask = poly_mask & (grid_ndvi > 0.02)
-    if cloud_shadow_mask is not None:
-        valid_mask = valid_mask & (~cloud_shadow_mask)
-    valid_vals = grid_ndvi[valid_mask] if np.any(valid_mask) else np.array([0.18])
+    # Absolute agronomic zone boundaries for NDVI
+    Z = [(0.12, [148, 163, 184, 130], [190, 160, 100, 170]),   # Soil / Bare → Gray
+         (0.18, [190, 160, 100, 170], [234, 179, 8, 210]),     # Low Vigor → Amber
+         (0.25, [234, 179, 8, 210],   [132, 204, 22, 215]),    # Moderate Vigor → Lime
+         (0.35, [132, 204, 22, 215],  [52, 211, 153, 220]),    # Dense → Medium Green
+         (1.00, [52, 211, 153, 220],  [16, 185, 129, 230])]   # Very Dense → Emerald
 
-    p5 = float(np.percentile(valid_vals, 5))
-    p25 = float(np.percentile(valid_vals, 25))
-    p50 = float(np.percentile(valid_vals, 50))
-    p75 = float(np.percentile(valid_vals, 75))
-    p95 = float(np.percentile(valid_vals, 95))
-
-    # 5-class dynamic color palette based on field-relative percentiles
     for i in range(h):
         for j in range(w):
             if not poly_mask[i, j] or (cloud_shadow_mask is not None and cloud_shadow_mask[i, j]):
                 rgba[i, j] = [0, 0, 0, 0]
                 continue
             val = grid_ndvi[i, j]
-            if val >= p75:
-                rgba[i, j] = [16, 185, 129, 225]    # Emerald Green (Top Quartile)
-            elif val >= p50:
-                rgba[i, j] = [52, 211, 153, 210]    # Medium Green (Above Median)
-            elif val >= p25:
-                rgba[i, j] = [132, 204, 22, 200]    # Lime Green (Below Median)
-            elif val >= p5:
-                rgba[i, j] = [234, 179, 8, 200]     # Amber (Low Vigor)
+            if val < 0.02:
+                rgba[i, j] = [148, 163, 184, 100]
+                continue
+            prev_thresh = 0.02
+            for thresh, c_low, c_high in Z:
+                if val < thresh:
+                    t = (val - prev_thresh) / max(0.001, thresh - prev_thresh)
+                    rgba[i, j] = _lerp_rgba(c_low, c_high, t)
+                    break
+                prev_thresh = thresh
             else:
-                rgba[i, j] = [148, 163, 184, 130]   # Neutral Soil Gray (Bare/Very Low)
+                rgba[i, j] = [16, 185, 129, 230]
 
     img = Image.fromarray(rgba, mode="RGBA")
     buf = io.BytesIO()
@@ -372,40 +377,45 @@ def create_ndvi_heatmap(grid_ndvi: np.ndarray, poly_mask: np.ndarray, cloud_shad
 
 
 def create_ndwi_heatmap(grid_ndwi: np.ndarray, poly_mask: np.ndarray, cloud_shadow_mask: np.ndarray = None) -> str:
-    """Generate RGBA heatmap PNG base64 URL for NDWI with dynamic percentile-based coloring."""
+    """
+    Hybrid Continuous-Gradient NDWI Hydric Stress Heatmap.
+    Uses absolute moisture thresholds with smooth linear interpolation.
+    NDWI > -0.05: Blue (Optimal Moisture)
+    NDWI -0.18 to -0.05: Cyan (Balanced Moisture)
+    NDWI -0.24 to -0.18: Green (Mild Stress)
+    NDWI -0.30 to -0.24: Amber (Moderate Stress)
+    NDWI < -0.30: Red (Severe Hydric Stress)
+    """
     h, w = grid_ndwi.shape
     rgba = np.zeros((h, w, 4), dtype=np.uint8)
 
-    # Extract valid polygon pixels for relative percentile scaling
-    valid_mask = poly_mask.copy()
-    if cloud_shadow_mask is not None:
-        valid_mask = valid_mask & (~cloud_shadow_mask)
-    valid_vals = grid_ndwi[valid_mask] if np.any(valid_mask) else np.array([-0.15])
-
-    # NDWI: higher = more moisture, lower = more stress
-    p5 = float(np.percentile(valid_vals, 5))
-    p25 = float(np.percentile(valid_vals, 25))
-    p50 = float(np.percentile(valid_vals, 50))
-    p75 = float(np.percentile(valid_vals, 75))
-    p95 = float(np.percentile(valid_vals, 95))
-
-    # 5-class dynamic color palette: Blue (wet) → Cyan → Green → Amber → Red (dry stress)
+    # Absolute agronomic zone boundaries for NDWI (ascending from dry to wet)
+    # val < -0.30: Red
+    # val -0.30 to -0.24: Red → Amber
+    # val -0.24 to -0.18: Amber → Green
+    # val -0.18 to -0.05: Green → Cyan
+    # val >= -0.05: Cyan → Royal Blue
     for i in range(h):
         for j in range(w):
             if not poly_mask[i, j] or (cloud_shadow_mask is not None and cloud_shadow_mask[i, j]):
                 rgba[i, j] = [0, 0, 0, 0]
                 continue
             val = grid_ndwi[i, j]
-            if val >= p75:
-                rgba[i, j] = [59, 130, 246, 215]    # Blue (Optimal Moisture - Top Quartile)
-            elif val >= p50:
-                rgba[i, j] = [6, 182, 212, 205]     # Cyan (Good Moisture - Above Median)
-            elif val >= p25:
-                rgba[i, j] = [34, 197, 94, 200]     # Green (Balanced - Below Median)
-            elif val >= p5:
-                rgba[i, j] = [245, 158, 11, 210]    # Amber (Mild Stress - Low Quartile)
+            if val < -0.30:
+                t = max(0.0, min(1.0, (val - (-0.50)) / 0.20))
+                rgba[i, j] = _lerp_rgba([180, 20, 20, 230], [220, 38, 38, 225], t)
+            elif val < -0.24:
+                t = (val - (-0.30)) / 0.06
+                rgba[i, j] = _lerp_rgba([220, 38, 38, 225], [245, 158, 11, 215], t)
+            elif val < -0.18:
+                t = (val - (-0.24)) / 0.06
+                rgba[i, j] = _lerp_rgba([245, 158, 11, 215], [34, 197, 94, 205], t)
+            elif val < -0.05:
+                t = (val - (-0.18)) / 0.13
+                rgba[i, j] = _lerp_rgba([34, 197, 94, 205], [6, 182, 212, 210], t)
             else:
-                rgba[i, j] = [220, 38, 38, 225]     # Red (Severe Stress - Bottom 5%)
+                t = max(0.0, min(1.0, (val - (-0.05)) / 0.30))
+                rgba[i, j] = _lerp_rgba([6, 182, 212, 210], [59, 130, 246, 225], t)
 
     img = Image.fromarray(rgba, mode="RGBA")
     buf = io.BytesIO()
