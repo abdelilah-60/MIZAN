@@ -1,6 +1,7 @@
 import type { User, HealthStatus, ActiveTab } from "../lib/types";
 import { NotificationCenter } from "./NotificationCenter";
 import { LanguageSwitcher } from "./LanguageSwitcher";
+import { useTranslation } from "react-i18next";
 
 interface HeaderProps {
   user: User | null;
@@ -21,6 +22,9 @@ export function Header({
   searchQuery,
   onSearchChange,
 }: HeaderProps) {
+  const { t, i18n } = useTranslation();
+  const isAr = i18n.language === "ar";
+
   return (
     <header className="border-b border-[#2e4052]/60 backdrop-blur-md sticky top-0 z-[1000] bg-[#16212b]/95">
       <div className="mx-auto max-w-[1400px] px-4 py-3 flex items-center justify-between gap-4">
@@ -29,14 +33,16 @@ export function Header({
           <div
             onClick={() => onTabChange("fields")}
             className="h-9 w-9 rounded-xl bg-gradient-to-br from-[#8D5B4C] to-[#A0522D] flex items-center justify-center text-[#F9F8F6] font-black text-lg shadow-md shadow-[#8D5B4C]/25 cursor-pointer hover:scale-95 transition-all border border-[#B86B53]/40"
-            title="Mizan AgTech"
+            title={t("common.appTitle")}
           >
             M
           </div>
 
           <div className="flex flex-col">
             <span className="text-sm font-extrabold text-[#F9F8F6] tracking-tight">MIZAN</span>
-            <span className="text-[9px] font-bold text-[#8D5B4C] uppercase tracking-widest -mt-0.5">الحكيم &middot; SAGE</span>
+            <span className="text-[9px] font-bold text-[#8D5B4C] uppercase tracking-widest -mt-0.5">
+              {isAr ? "نمط الحكيم" : "MODE SAGE"}
+            </span>
           </div>
           
           {/* Integrated Search Input */}
@@ -46,11 +52,11 @@ export function Header({
             </span>
             <input
               type="text"
-              placeholder="Rechercher... / بحث"
+              placeholder={t("common.searchPlaceholder")}
               value={searchQuery}
               onChange={(e) => onSearchChange(e.target.value)}
               className="w-full bg-[#1f2d3a] border border-[#2e4052] rounded-full pl-9 pr-4 py-1.5 text-xs text-[#F9F8F6] focus:outline-none focus:ring-1 focus:ring-[#8D5B4C] placeholder-[#A8A093]"
-              aria-label="Rechercher"
+              aria-label={t("common.searchPlaceholder")}
             />
           </div>
         </div>
@@ -65,10 +71,10 @@ export function Header({
                 ? "bg-[#8D5B4C] text-[#F9F8F6] shadow-md shadow-[#8D5B4C]/30"
                 : "text-[#D8D2C5] hover:text-[#F9F8F6]"
             }`}
-            title="Fil d'actualité (الرئيسية)"
+            title={t("nav.feed")}
           >
             <span>🏠</span>
-            <span className="hidden md:inline">Accueil</span>
+            <span className="hidden md:inline">{isAr ? "الرئيسية" : "Accueil"}</span>
           </button>
           {user?.role === "DEVELOPER" && (
             <button
@@ -79,10 +85,10 @@ export function Header({
                   ? "bg-[#2C3E50] text-[#F9F8F6] border border-[#8D5B4C]/40 shadow-md shadow-[#2C3E50]/40"
                   : "text-[#D8D2C5] hover:text-[#F9F8F6]"
               }`}
-              title="Base de Connaissance (الموسوعة)"
+              title={t("nav.knowledge")}
             >
               <span>🧠</span>
-              <span className="hidden md:inline">Savoir</span>
+              <span className="hidden md:inline">{isAr ? "قاعدة المعرفة" : "Savoir"}</span>
             </button>
           )}
         </nav>
@@ -99,7 +105,7 @@ export function Header({
               <span className="text-[#A8A093]">
                 DB:{" "}
                 <span className={health.db === "connected" ? "text-[#D8D2C5]" : "text-red-400"}>
-                  {health.db}
+                  {health.db === "connected" ? (isAr ? "متصل" : "Connecté") : (isAr ? "منقطع" : "Déconnecté")}
                 </span>
               </span>
             </div>
@@ -115,7 +121,7 @@ export function Header({
               onClick={onLogout}
               className="text-[10px] font-bold bg-[#1f2d3a] hover:bg-red-900/30 text-[#D8D2C5] hover:text-red-400 px-3 py-1.5 rounded-lg border border-[#2e4052] transition-all active:scale-95"
             >
-              Logout
+              {t("nav.logout")}
             </button>
           </div>
         </div>

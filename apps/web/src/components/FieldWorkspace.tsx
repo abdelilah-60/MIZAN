@@ -18,6 +18,7 @@ import { DigitalTwinKPIs } from "./DigitalTwinKPIs";
 import { SmartRecommendationCard } from "./SmartRecommendationCard";
 import { SpectralIndexGuide } from "./SpectralIndexGuide";
 import { ReportViewer } from "./ReportViewer";
+import { useTranslation } from "react-i18next";
 
 interface FieldWorkspaceProps {
   field: Field;
@@ -68,6 +69,9 @@ export function FieldWorkspace({
   onLogOperationDirectly,
   onClose,
 }: FieldWorkspaceProps) {
+  const { t, i18n } = useTranslation();
+  const isAr = i18n.language === "ar";
+
   const [activeTab, setActiveTab] = useState<WorkspaceTab>("agronomy");
   const [satelliteMode, setSatelliteMode] = useState<"SATELLITE" | "CANOPY" | "SAVI" | "NDVI" | "NDWI">("CANOPY");
   const [satelliteData, setSatelliteData] = useState<any>(null);
@@ -107,15 +111,15 @@ export function FieldWorkspace({
 
   const summary = field.seasonSummary?.[0];
 
-  // Stage label
+  // Dynamic localized stage label
   const stageLabels: Record<string, string> = {
-    DORMANCE: "❄️ السكون",
-    DEBOURREMENT: "🌱 خروج البراعم",
-    FLORAISON: "🌸 الإزهار",
-    NOUAISON: "👶 عقد الثمار",
-    CROISSANCE: "📈 نمو الثمرة",
-    VERAISON: "🎨 تلوين الثمرة",
-    RECOLTE: "🫒 الجني",
+    DORMANCE: t("phenology.DORMANCE"),
+    DEBOURREMENT: t("phenology.DEBOURREMENT"),
+    FLORAISON: t("phenology.FLORAISON"),
+    NOUAISON: t("phenology.NOUAISON"),
+    CROISSANCE: t("phenology.CROISSANCE"),
+    VERAISON: t("phenology.VERAISON"),
+    RECOLTE: t("phenology.RECOLTE"),
   };
 
   const [isDismissed, setIsDismissed] = useState(false);
@@ -130,16 +134,18 @@ export function FieldWorkspace({
     if (!summary?.currentStage) return null;
     const stage = summary.currentStage;
     const npk = agronomyData?.recommendations?.npk;
-    const cropName = field.cropType || "Picholine Marocaine";
+    const cropName = field.cropType || (isAr ? "الزيتون المغربي" : "Olive Marocaine");
 
     switch (stage) {
       case "DORMANCE":
         return {
-          title: "❄️ Dormance (السكون الشتوي)",
-          desc: `يُنصح ببدء التسميد العضوي (Amendement Organique) لتغذية التربة وتحسين بنية الحقل وإمداد أشجار (${cropName}) بالمادة العضوية المجهزة قبل خروج العين.`,
+          title: t("phenology.DORMANCE"),
+          desc: isAr
+            ? `يُنصح ببدء التسميد العضوي لتغذية التربة وتحسين بنية الحقل وإمداد أشجار (${cropName}) بالمادة العضوية قبل انفتاح البراعم.`
+            : `Il est recommandé d'appliquer un amendement organique pour nourrir le sol et préparer les arbres de (${cropName}) avant le débourrement.`,
           type: "ORGANIC_AMENDMENT",
           icon: "🍂",
-          btnText: "Appliquer l'amendement (تطبيق التسميد العضوي)",
+          btnText: isAr ? "تطبيق التسميد العضوي" : "Appliquer l'amendement organique",
           prefill: {
             fertilizerType: "BOVINE",
             state: "DECOMPOSED",
@@ -149,11 +155,13 @@ export function FieldWorkspace({
         };
       case "DEBOURREMENT":
         return {
-          title: "🌱 Débourrement (خروج البراعم)",
-          desc: `هذه هي بداية النمو الخضري النشط للصنف (${cropName}). يُنصح بإضافة الدفعة الربيعية الأولى: ${npk?.n || 31} كجم/هكتار من الآزوت لدعم النموات الجديدة وتجهيز الأغصان الفتية.`,
+          title: t("phenology.DEBOURREMENT"),
+          desc: isAr
+            ? `هذه هي بداية النمو الخضري النشط لصنف (${cropName}). يُنصح بإضافة الدفعة الربيعية الأولى: ${npk?.n || 31} كجم/هكتار من النيتروجين لدعم الأغصان الفتية.`
+            : `C'est le début de la croissance vegetative active pour la variété (${cropName}). Appliquez la 1ère dose d'azote: ${npk?.n || 31} kg/ha.`,
           type: "FERTILIZER",
           icon: "🧪",
-          btnText: "Appliquer l'Azote (تطبيق الآزوت)",
+          btnText: isAr ? "تطبيق النيتروجين" : "Appliquer l'azote",
           prefill: {
             fertilizerType: "NPK",
             quantity: String(npk?.n || 31),
@@ -165,11 +173,13 @@ export function FieldWorkspace({
         };
       case "FLORAISON":
         return {
-          title: "🌸 Floraison (الإزهار)",
-          desc: `لتجنب تساقط الأزهار والحفاظ على الحمل للصنف (${cropName})، يجب خفض الري الزائد والامتناع عن التسميد النيتروجيني المفرط. التوصية الحالية هي رش الفوسفات والبورون الورقي لدعم التلقيح.`,
+          title: t("phenology.FLORAISON"),
+          desc: isAr
+            ? `لتجنب تساقط الأزهار والحفاظ على الحمل لصنف (${cropName})، يجب ضبط الري والامتناع عن التسميد النيتروجيني المفرط مع رش الفوسفات والبورون الورقي.`
+            : `Pour éviter la chute des fleurs sur la variété (${cropName}), ajustez l'irrigation et privilégiez un apport foliaire en phosphore et bore.`,
           type: "FERTILIZER",
           icon: "🌸",
-          btnText: "Appliquer le Phosphate (تطبيق الفوسفات)",
+          btnText: isAr ? "تطبيق الفوسفات" : "Appliquer le phosphore",
           prefill: {
             fertilizerType: "NPK",
             quantity: String(npk?.p || 10),
@@ -181,11 +191,13 @@ export function FieldWorkspace({
         };
       case "NOUAISON":
         return {
-          title: "👶 Nouaison (عقد الثمار)",
-          desc: `الثمار الفتية للصنف (${cropName}) تبدأ في النمو وتتطلب الآزوت المتوازن. يوصى بإضافة الجرعة الصافية الثانية: ${Math.round((npk?.n || 30) * 0.35)} كجم/هكتار لدعم العقد وتخفيف تساقط الثمار الفتية.`,
+          title: t("phenology.NOUAISON"),
+          desc: isAr
+            ? `الثمار الفتية لصنف (${cropName}) تبدأ في النمو وتتطلب التغذية المتوازنة. يوصى بإضافة الجرعة الثانية: ${Math.round((npk?.n || 30) * 0.35)} كجم/هكتار لدعم العقد.`
+            : `Les jeunes fruits de la variété (${cropName}) entrent en phase de nouaison. Appliquez la 2ème dose d'azote: ${Math.round((npk?.n || 30) * 0.35)} kg/ha.`,
           type: "FERTILIZER",
           icon: "👶",
-          btnText: "Appliquer la dose de nouaison (تطبيق دفعة العقد)",
+          btnText: isAr ? "تطبيق دفعة عقد الثمار" : "Appliquer la dose de nouaison",
           prefill: {
             fertilizerType: "NPK",
             quantity: String(Math.round((npk?.n || 30) * 0.35)),
@@ -197,11 +209,13 @@ export function FieldWorkspace({
         };
       case "CROISSANCE":
         return {
-          title: "📈 Croissance & Durcissement (نمو وتصلب النواة)",
-          desc: `هذه هي أهم فترة لتراكم الزيت وامتلاء الثمار في الزيتون (${cropName}). يُنصح بإضافة الدفعة الربيعية/الصيفية الأساسية للبوتاسيوم: ${npk?.k || 40} كجم/هكتار لدعم حجم وجودة الحبة.`,
+          title: t("phenology.CROISSANCE"),
+          desc: isAr
+            ? `هذه هي أهم فترة لتراكم الزيت وامتلاء الثمار في الزيتون (${cropName}). يُنصح بإضافة الدفعة الأساسية للبوتاسيوم: ${npk?.k || 40} كجم/هكتار لدعم حجم وجودة الحبة.`
+            : `Période cruciale pour l'accumulation d'huile et le grossissement des olives (${cropName}). Appliquez la dose de potassium: ${npk?.k || 40} kg/ha.`,
           type: "FERTILIZER",
           icon: "📈",
-          btnText: "Appliquer le Potassium (تطبيق البوتاسيوم)",
+          btnText: isAr ? "تطبيق سماد البوتاسيوم" : "Appliquer le potassium",
           prefill: {
             fertilizerType: "NPK",
             quantity: String(npk?.k || 40),
@@ -213,11 +227,13 @@ export function FieldWorkspace({
         };
       case "VERAISON":
         return {
-          title: "🎨 Véraison (تلوين الثمرة والنضج)",
-          desc: `ثمار الصنف (${cropName}) تبدأ بتغيير اللون. يُنصح بمراقبة ذبابة الزيتون لحماية المحصول، والتوقف التام عن التسميد الكيميائي تمهيداً للجني.`,
+          title: t("phenology.VERAISON"),
+          desc: isAr
+            ? `ثمار الصنف (${cropName}) تبدأ بتغيير اللون والنضج. يُنصح بمراقبة ذبابة الزيتون لحماية المحصول، والتوقف عن التسميد الكيميائي تمهيداً للجني.`
+            : `Les olives de (${cropName}) commencent la véraison. Surveillez la mouche de l'olive et stoppez la fertilisation chimique avant récolte.`,
           type: "PESTICIDE",
           icon: "🛡️",
-          btnText: "Traitement de protection (تسجيل حماية الثمار)",
+          btnText: isAr ? "تسجيل معالجة وقاية الثمار" : "Traitement de protection des fruits",
           prefill: {
             activeIngredient: "DELTAMETHRINE",
             targetPest: "FLY",
@@ -228,11 +244,13 @@ export function FieldWorkspace({
         };
       case "RECOLTE":
         return {
-          title: "🫒 Récolte (الجني والحصاد)",
-          desc: `حان موعد قطف حبات الصنف (${cropName}) للوجهة الموصى بها. يوصى بالجني اليدوي أو الهزازات اللطيفة لتجنب كسر وجرح الأغصان المنتجة للعام القادم.`,
+          title: t("phenology.RECOLTE"),
+          desc: isAr
+            ? `حان موعد قطف حبات الصنف (${cropName}). يوصى بالجني اليدوي أو الهزازات اللطيفة لتجنب جرح الأغصان المنتجة للموسم القادم.`
+            : `La période de récolte des olives (${cropName}) a sonné. Privilégiez un peignage manuel ou un vibreur adapté pour préserver le rameau.`,
           type: "HARVEST",
           icon: "🫒",
-          btnText: "Enregistrer la récolte (تسجيل الجني)",
+          btnText: isAr ? "تسجيل عملية الجني والحصاد" : "Enregistrer la récolte",
           prefill: {
             method: "MANUAL",
             quantity: "2500",
@@ -243,7 +261,7 @@ export function FieldWorkspace({
       default:
         return null;
     }
-  }, [summary?.currentStage, agronomyData, field.cropType, field.id]);
+  }, [summary?.currentStage, agronomyData, field.cropType, field.id, isAr, t]);
 
   // Check if there is any irrigation logged today
   const hasIrrigationToday = useMemo(() => {
@@ -268,7 +286,7 @@ export function FieldWorkspace({
           volumeM3: String(Math.round((recommendedLiters * ((agronomyData?.recommendations?.water as any)?.treeDensity || 200) * field.area) / 1000)),
           durationMinutes: String(recommendedMinutes),
           waterSource: "WELL",
-          notes: "Enregistrement automatique via recommandation Mizan"
+          notes: isAr ? "تسجيل أوتوماتيكي عبر توصية منصة ميزان" : "Enregistrement automatique via recommandation Mizan"
         }
       });
       setIsDismissed(true);
@@ -343,10 +361,12 @@ export function FieldWorkspace({
               type="button"
               onClick={() => setIsMapExpanded(!isMapExpanded)}
               className="bg-[#16212b]/95 hover:bg-[#1f2d3a] border border-[#2e4052] text-[#D8D2C5] hover:text-[#F9F8F6] px-3 py-1.5 rounded-2xl text-xs font-bold shadow-xl transition-all flex items-center gap-1.5"
-              title={isMapExpanded ? "Réduire la carte" : "Agrandir la carte"}
+              title={isMapExpanded ? (isAr ? "تصغير الخريطة" : "Réduire la carte") : (isAr ? "تكبير الخريطة" : "Agrandir la carte")}
             >
               <span>{isMapExpanded ? "↙️" : "↗️"}</span>
-              <span className="hidden sm:inline">{isMapExpanded ? "تصغير الخريطة" : "تكبير الخريطة"}</span>
+              <span className="hidden sm:inline">
+                {isMapExpanded ? (isAr ? "تصغير الخريطة" : "Réduire") : (isAr ? "تكبير الخريطة" : "Agrandir")}
+              </span>
             </button>
           </div>
         </div>
@@ -372,14 +392,18 @@ export function FieldWorkspace({
                 
                 {/* Rich Metadata Pills */}
                 <div className="flex items-center gap-2 text-xs text-[#D8D2C5] font-medium flex-wrap">
-                  <span className="bg-[#1f2d3a] px-2.5 py-0.5 rounded-lg border border-[#2e4052]">📐 {field.area} هكتار</span>
+                  <span className="bg-[#1f2d3a] px-2.5 py-0.5 rounded-lg border border-[#2e4052]">📐 {field.area} {t("common.ha")}</span>
                   {field.plantingDate && (
                     <span className="bg-[#1f2d3a] px-2.5 py-0.5 rounded-lg border border-[#2e4052]">
-                      🌱 غرس: {formatDate(field.plantingDate, "fr-FR", { month: "short", year: "numeric" })}
+                      🌱 {isAr ? "تاريخ الغرس" : "Plantation"}: {formatDate(field.plantingDate, isAr ? "ar-MA" : "fr-FR", { month: "short", year: "numeric" })}
                     </span>
                   )}
-                  <span className="bg-[#1f2d3a] px-2.5 py-0.5 rounded-lg border border-[#2e4052]">💧 ري بالتنقيط</span>
-                  <span className="bg-[#1f2d3a] px-2.5 py-0.5 rounded-lg border border-[#2e4052]">📍 المغرب</span>
+                  <span className="bg-[#1f2d3a] px-2.5 py-0.5 rounded-lg border border-[#2e4052]">
+                    💧 {isAr ? "ري بالتنقيط" : "Goutte-à-goutte"}
+                  </span>
+                  <span className="bg-[#1f2d3a] px-2.5 py-0.5 rounded-lg border border-[#2e4052]">
+                    📍 {isAr ? "المملكة المغربية" : "Maroc"}
+                  </span>
                 </div>
               </div>
             </div>
@@ -392,7 +416,7 @@ export function FieldWorkspace({
                 className="bg-gradient-to-r from-[#8D5B4C] to-[#A0522D] hover:from-[#9e6757] hover:to-[#b35d35] text-[#F9F8F6] text-xs font-bold px-4 py-2.5 rounded-2xl transition-all flex items-center gap-2 shadow-xl active:scale-95 border border-[#B86B53]/30"
               >
                 <span>📄</span>
-                <span>Rapport PDF (التقرير)</span>
+                <span>{t("workspace.actions.pdfReport")}</span>
               </button>
               <button
                 type="button"
@@ -400,7 +424,7 @@ export function FieldWorkspace({
                 className="bg-[#1f2d3a] hover:bg-[#28394a] border border-[#2e4052] text-[#D8D2C5] hover:text-[#F9F8F6] text-xs font-bold px-4 py-2.5 rounded-2xl transition-all flex items-center gap-2 shadow-xl active:scale-95"
               >
                 <span>📖</span>
-                <span>دليل المؤشرات</span>
+                <span>{t("workspace.actions.indexGuide")}</span>
               </button>
             </div>
           </div>
@@ -423,8 +447,7 @@ export function FieldWorkspace({
                   : "bg-[#1f2d3a]/60 text-[#D8D2C5] hover:text-[#F9F8F6] hover:bg-[#1f2d3a] border-[#2e4052]"
               }`}
             >
-              <span>💧</span>
-              <span>1. Recommandations (الري والتسميد)</span>
+              <span>1. {t("workspace.tabs.agronomy")}</span>
             </button>
 
             <button
@@ -436,8 +459,7 @@ export function FieldWorkspace({
                   : "bg-[#1f2d3a]/60 text-[#D8D2C5] hover:text-[#F9F8F6] hover:bg-[#1f2d3a] border-[#2e4052]"
               }`}
             >
-              <span>🛡️</span>
-              <span>2. Santé & Risques (الأمراض والمخاطر)</span>
+              <span>2. {t("workspace.tabs.insights")}</span>
             </button>
 
             <button
@@ -449,8 +471,7 @@ export function FieldWorkspace({
                   : "bg-[#1f2d3a]/60 text-[#D8D2C5] hover:text-[#F9F8F6] hover:bg-[#1f2d3a] border-[#2e4052]"
               }`}
             >
-              <span>⛅</span>
-              <span>3. Microclimat & Météo (الطقس والمناخ)</span>
+              <span>3. {t("workspace.tabs.weather")}</span>
             </button>
 
             <button
@@ -462,8 +483,7 @@ export function FieldWorkspace({
                   : "bg-[#1f2d3a]/60 text-[#D8D2C5] hover:text-[#F9F8F6] hover:bg-[#1f2d3a] border-[#2e4052]"
               }`}
             >
-              <span>📋</span>
-              <span>4. Activité & Logs (سجل العمليات الميدانية)</span>
+              <span>4. {t("workspace.tabs.operations")}</span>
             </button>
           </div>
         </div>
@@ -489,7 +509,7 @@ export function FieldWorkspace({
           <div className="space-y-6 animate-in fade-in duration-200">
             {loadingAgronomy ? (
               <div className="text-center py-16 text-[#D8D2C5] animate-pulse font-medium">
-                Chargement des recommandations agronomiques et برنامج التسميد...
+                {t("common.loading")}
               </div>
             ) : agronomyData ? (
               <AgronomyPanel
@@ -503,7 +523,7 @@ export function FieldWorkspace({
               />
             ) : (
               <div className="text-center py-16 text-[#D8D2C5]">
-                Impossible de charger les données agronomiques.
+                {t("common.error")}
               </div>
             )}
           </div>
@@ -514,13 +534,13 @@ export function FieldWorkspace({
           <div className="space-y-6 animate-in fade-in duration-200">
             {loadingInsights ? (
               <div className="text-center py-16 text-[#D8D2C5] animate-pulse font-medium">
-                Chargement de l'analyse AI et prévisions maladies...
+                {t("common.loading")}
               </div>
             ) : insightsData ? (
               <InsightsPanel data={insightsData} cropType={field.cropType} />
             ) : (
               <div className="text-center py-16 text-[#D8D2C5]">
-                L'analyse des risques n'a pas encore été générée. Veuillez vérifier la santé du حقل.
+                {isAr ? "لم يتم توليد تحليل المخاطر بعد." : "Analyse des risques non générée."}
               </div>
             )}
           </div>
@@ -533,23 +553,23 @@ export function FieldWorkspace({
               <div>
                 <h3 className="text-lg font-black text-[#F9F8F6] flex items-center gap-2">
                   <span>⛅</span>
-                  <span>Conditions Météo & Microclimat (الطقس والمناخ الدقيق)</span>
+                  <span>{t("grid.liveWeather")}</span>
                 </h3>
                 <p className="text-xs text-[#D8D2C5] mt-1">
-                  توقعات الطقس لـ 7 أيام والمؤشرات الحرارية والمناخية لحقل {field.name}
+                  {isAr ? `توقعات الطقس لـ 7 أيام والمؤشرات الحرارية لحقل ${field.name}` : `Prévisions météo 7 jours et microclimat pour la parcelle ${field.name}`}
                 </p>
               </div>
             </div>
 
             {loadingWeather ? (
               <div className="text-center py-16 text-[#D8D2C5] animate-pulse font-medium">
-                Mise à jour des données météo en direct...
+                {t("common.loading")}
               </div>
             ) : weatherData ? (
               <WeatherPanel data={weatherData} />
             ) : (
               <div className="text-center py-16 text-[#D8D2C5]">
-                Météo non chargée.
+                {isAr ? "تعذر تحميل بيانات الطقس" : "Météo non disponible"}
               </div>
             )}
           </div>
@@ -562,10 +582,10 @@ export function FieldWorkspace({
               <div>
                 <h3 className="text-lg font-black text-[#F9F8F6] flex items-center gap-2">
                   <span>📋</span>
-                  <span>Journal d'Activité & Logs (سجل العمليات الميدانية)</span>
+                  <span>{t("workspace.tabs.operations")}</span>
                 </h3>
                 <p className="text-xs text-[#D8D2C5] mt-1">
-                  تتبع جميع العمليات الفلاحية المدونة لحقل {field.name} (ري، تسميد، معالجة، جني)
+                  {isAr ? `تتبع جميع العمليات الفلاحية المدونة لحقل ${field.name}` : `Suivi de toutes les interventions agricoles enregistrées pour ${field.name}`}
                 </p>
               </div>
 
@@ -575,13 +595,13 @@ export function FieldWorkspace({
                 className="px-4 py-2.5 bg-gradient-to-r from-[#8D5B4C] to-[#A0522D] hover:from-[#9e6757] hover:to-[#b35d35] text-[#F9F8F6] text-xs font-bold rounded-2xl shadow-lg transition-all active:scale-95 flex items-center gap-2"
               >
                 <span>+</span>
-                <span>Log Action (إضافة عملية ميدانية)</span>
+                <span>{t("modal.logOperation")}</span>
               </button>
             </div>
 
             {loadingOperations ? (
               <div className="text-center py-16 text-[#D8D2C5] animate-pulse font-medium">
-                Chargement du journal d'activité...
+                {t("common.loading")}
               </div>
             ) : operationsData ? (
               <OperationsPanel
@@ -591,7 +611,7 @@ export function FieldWorkspace({
               />
             ) : (
               <div className="text-center py-16 text-[#D8D2C5]">
-                Aucune opération récente loggée.
+                {isAr ? "لا توجد عمليات ميدانية مسجلة مؤخراً" : "Aucune opération récente enregistrée"}
               </div>
             )}
           </div>

@@ -16,7 +16,8 @@ export const SpectralLayerSwitcher = React.memo(function SpectralLayerSwitcher({
   loadingSatellite,
   onClose,
 }: SpectralLayerSwitcherProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const isAr = i18n.language === "ar";
 
   const getCurrentValue = () => {
     if (loadingSatellite) return "...";
@@ -47,13 +48,23 @@ export const SpectralLayerSwitcher = React.memo(function SpectralLayerSwitcher({
             value={satelliteMode}
             onChange={(e) => setSatelliteMode(e.target.value as any)}
             className="bg-[#16212b]/95 hover:bg-[#1f2d3a] border border-[#8D5B4C]/60 text-[#F9F8F6] text-xs font-bold py-2 pl-3.5 pr-8 rounded-2xl shadow-2xl backdrop-blur-2xl appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#8D5B4C] transition-all"
-            aria-label="Sélectionner le mode طيفي"
+            aria-label={t("spectral.natural")}
           >
-            <option value="SATELLITE" className="bg-[#16212b] text-[#F9F8F6]">🛰️ Naturel (طبيعي)</option>
-            <option value="CANOPY" className="bg-[#16212b] text-[#F9F8F6]">🌳 Cover % (كثافة الأشجار - fCOVER)</option>
-            <option value="SAVI" className="bg-[#16212b] text-[#F9F8F6]">🌿 SAVI (صحة الأشجار - SAVI Index)</option>
-            <option value="NDVI" className="bg-[#16212b] text-[#F9F8F6]">🌱 NDVI (الغطاء النباتي - NDVI Index)</option>
-            <option value="NDWI" className="bg-[#16212b] text-[#F9F8F6]">💧 NDWI (الإجهاد المائي - NDWI Stress)</option>
+            <option value="SATELLITE" className="bg-[#16212b] text-[#F9F8F6]">
+              {isAr ? "🛰️ المرئية الفضائية الطبيعية" : "🛰️ Imagerie naturelle"}
+            </option>
+            <option value="CANOPY" className="bg-[#16212b] text-[#F9F8F6]">
+              {isAr ? "🌳 كثافة العرش (fCOVER)" : "🌳 Couverture canopée (fCOVER)"}
+            </option>
+            <option value="SAVI" className="bg-[#16212b] text-[#F9F8F6]">
+              {isAr ? "🌿 صحة الخضرة (SAVI)" : "🌿 Indice de santé (SAVI)"}
+            </option>
+            <option value="NDVI" className="bg-[#16212b] text-[#F9F8F6]">
+              {isAr ? "🌱 الغطاء النباتي (NDVI)" : "🌱 Indice de végétation (NDVI)"}
+            </option>
+            <option value="NDWI" className="bg-[#16212b] text-[#F9F8F6]">
+              {isAr ? "💧 الإجهاد المائي (NDWI)" : "💧 Stress hydrique (NDWI)"}
+            </option>
           </select>
           <span className="absolute right-3 pointer-events-none text-xs text-[#8D5B4C]">▼</span>
         </div>
@@ -71,34 +82,34 @@ export const SpectralLayerSwitcher = React.memo(function SpectralLayerSwitcher({
             {satelliteMode === "CANOPY" ? (
               <>
                 <span className="font-extrabold text-[#8D5B4C]">fCOVER (%):</span>
-                <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-[#8D5B4C] shadow-[0_0_8px_#8D5B4C]" /> كثيفة (&ge;35%)</span>
-                <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-[#A0522D]" /> متوازنة (18-35%)</span>
-                <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-[#B86B53]" /> فتية (8-18%)</span>
-                <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-slate-500" /> تربة (0%)</span>
+                <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-[#8D5B4C] shadow-[0_0_8px_#8D5B4C]" /> {isAr ? "كثيفة (≥35%)" : "Dense (≥35%)"}</span>
+                <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-[#A0522D]" /> {isAr ? "متوازنة (18-35%)" : "Équilibrée (18-35%)"}</span>
+                <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-[#B86B53]" /> {isAr ? "فتية (8-18%)" : "Jeune (8-18%)"}</span>
+                <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-slate-500" /> {isAr ? "تربة بور (0%)" : "Sol nu (0%)"}</span>
               </>
             ) : satelliteMode === "SAVI" ? (
               <>
                 <span className="font-extrabold text-[#8D5B4C]">SAVI:</span>
-                <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-[#8D5B4C] shadow-[0_0_8px_#8D5B4C]" /> ممتازة (&ge;0.28)</span>
-                <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-[#A0522D]" /> جيدة (0.20-0.28)</span>
-                <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-[#B86B53]" /> متوسطة (0.14-0.20)</span>
-                <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-red-500" /> ضعيفة (&lt;0.14)</span>
+                <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-[#8D5B4C] shadow-[0_0_8px_#8D5B4C]" /> {isAr ? "ممتازة (≥0.28)" : "Excellente (≥0.28)"}</span>
+                <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-[#A0522D]" /> {isAr ? "جيدة (0.20-0.28)" : "Bonne (0.20-0.28)"}</span>
+                <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-[#B86B53]" /> {isAr ? "متوسطة (0.14-0.20)" : "Moyenne (0.14-0.20)"}</span>
+                <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-red-500" /> {isAr ? "ضعيفة (<0.14)" : "Faible (<0.14)"}</span>
               </>
             ) : satelliteMode === "NDVI" ? (
               <>
                 <span className="font-extrabold text-[#8D5B4C]">NDVI:</span>
-                <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-[#8D5B4C] shadow-[0_0_8px_#8D5B4C]" /> كثيفة (&ge;0.30)</span>
-                <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-[#A0522D]" /> متوازنة (0.20-0.30)</span>
-                <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-[#B86B53]" /> خفيفة (0.14-0.20)</span>
-                <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-slate-500" /> تربة (&lt;0.14)</span>
+                <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-[#8D5B4C] shadow-[0_0_8px_#8D5B4C]" /> {isAr ? "كثيفة (≥0.30)" : "Dense (≥0.30)"}</span>
+                <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-[#A0522D]" /> {isAr ? "متوازنة (0.20-0.30)" : "Équilibrée (0.20-0.30)"}</span>
+                <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-[#B86B53]" /> {isAr ? "خفيفة (0.14-0.20)" : "Légère (0.14-0.20)"}</span>
+                <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-slate-500" /> {isAr ? "تربة (<0.14)" : "Sol (<0.14)"}</span>
               </>
             ) : (
               <>
                 <span className="font-extrabold text-[#8D5B4C]">NDWI:</span>
-                <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-blue-500 shadow-[0_0_8px_#3b82f6]" /> ري مثالي (&ge;0.02)</span>
-                <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-cyan-500" /> رطوبة متوازنة</span>
-                <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-amber-500" /> جفاف خفيف</span>
-                <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-red-500 shadow-[0_0_8px_#ef4444]" /> إجهاد حاد ⚠️</span>
+                <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-blue-500 shadow-[0_0_8px_#3b82f6]" /> {isAr ? "ري مثالي (≥0.02)" : "Irrigation optimale (≥0.02)"}</span>
+                <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-cyan-500" /> {isAr ? "رطوبة متوازنة" : "Humidité équilibrée"}</span>
+                <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-amber-500" /> {isAr ? "جفاف خفيف" : "Stress léger"}</span>
+                <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-full bg-red-500 shadow-[0_0_8px_#ef4444]" /> {isAr ? "إجهاد حاد ⚠️" : "Stress élevé ⚠️"}</span>
               </>
             )}
           </div>

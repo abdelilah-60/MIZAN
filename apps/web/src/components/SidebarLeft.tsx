@@ -19,7 +19,8 @@ export function SidebarLeft({
   onLogout,
   setSelectedFieldId,
 }: SidebarLeftProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const isAr = i18n.language === "ar";
 
   const handleTabClick = (tab: ActiveTab) => {
     setActiveTab(tab);
@@ -44,9 +45,11 @@ export function SidebarLeft({
           </div>
           <div>
             <h4 className="text-xs font-bold text-[#F9F8F6] hover:text-[#8D5B4C] transition-colors">
-              {user?.fullName || "Agriculteur Mizan"}
+              {user?.fullName || (isAr ? "مزارع ميزان" : "Agriculteur Mizan")}
             </h4>
-            <p className="text-[10px] text-[#A8A093] font-medium">Mizan AgTech &middot; الحكيم</p>
+            <p className="text-[10px] text-[#A8A093] font-medium">
+              {isAr ? "منصة ميزان • نمط الحكيم" : "Mizan AgTech • Mode Sage"}
+            </p>
           </div>
         </div>
 
