@@ -274,13 +274,15 @@ agronomyRoute.get("/:fieldId/recommendations", async (c) => {
     });
     const yieldConfig = await prisma.yieldConfig.findUnique({ where: { fieldId } });
 
-    const density = irrConfig?.treeDensity || 200;
+    const density = irrConfig?.treeDensity || 277;
     const drippers = (irrConfig?.drippersPerTree && irrConfig.drippersPerTree > 0) ? irrConfig.drippersPerTree : 4;
-    const flowRate = (irrConfig?.dripperFlowRate && irrConfig.dripperFlowRate > 0) ? irrConfig.dripperFlowRate : 4.0;
+    const flowRate = (irrConfig?.dripperFlowRate && irrConfig.dripperFlowRate > 0) ? irrConfig.dripperFlowRate : 8.0;
     const eff = (irrConfig?.efficiency && irrConfig.efficiency > 0) ? irrConfig.efficiency : 0.85;
 
     const et0 = 5.7;
-    const netWaterDepthMm = 4.0;
+    const kc = 0.70;
+    const kr = 0.70; // Canopy reduction factor for 6x6 Haouzia (~35% canopy cover)
+    const netWaterDepthMm = parseFloat((et0 * kc * kr).toFixed(2)); // ~2.79 mm/day
 
     const liters = (netWaterDepthMm * 10000) / density;
     const hours = liters / (drippers * flowRate * eff);
