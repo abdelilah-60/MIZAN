@@ -139,6 +139,8 @@ export const AgronomyPanel = React.memo(function AgronomyPanel({
     }
   }, [field.agronomicData, field.cropType, form.treeDensity]);
 
+  const densityPerHa = form.treeDensity ? Number(form.treeDensity) : 200;
+
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       
@@ -245,17 +247,26 @@ export const AgronomyPanel = React.memo(function AgronomyPanel({
                   <div className="text-xs font-mono font-black text-[#8D5B4C]">
                     {data.recommendations?.npk?.n || 0} {isAr ? "كجم/هـ" : "kg/ha"}
                   </div>
+                  <div className="text-[9px] font-mono text-[#D8D2C5] font-bold mt-0.5">
+                    {Math.round(((data.recommendations?.npk?.n || 0) * 1000) / densityPerHa)} {isAr ? "غ / شجرة" : "g / arbre"}
+                  </div>
                 </div>
                 <div className="bg-[#16212b] p-2.5 rounded-2xl border border-[#2e4052]">
                   <div className="text-[10px] text-[#A8A093] font-bold">{isAr ? "الفوسفور P" : "Phosphore P"}</div>
-                  <div className="text-xs font-mono font-black text-[#8D5B4C]">
+                  <div className="text-xs font-mono font-black text-amber-500">
                     {data.recommendations?.npk?.p || 0} {isAr ? "كجم/هـ" : "kg/ha"}
+                  </div>
+                  <div className="text-[9px] font-mono text-[#D8D2C5] font-bold mt-0.5">
+                    {Math.round(((data.recommendations?.npk?.p || 0) * 1000) / densityPerHa)} {isAr ? "غ / شجرة" : "g / arbre"}
                   </div>
                 </div>
                 <div className="bg-[#16212b] p-2.5 rounded-2xl border border-[#2e4052]">
                   <div className="text-[10px] text-[#A8A093] font-bold">{isAr ? "البوتاسيوم K" : "Potassium K"}</div>
-                  <div className="text-xs font-mono font-black text-[#8D5B4C]">
+                  <div className="text-xs font-mono font-black text-emerald-400">
                     {data.recommendations?.npk?.k || 0} {isAr ? "كجم/هـ" : "kg/ha"}
+                  </div>
+                  <div className="text-[9px] font-mono text-[#D8D2C5] font-bold mt-0.5">
+                    {Math.round(((data.recommendations?.npk?.k || 0) * 1000) / densityPerHa)} {isAr ? "غ / شجرة" : "g / arbre"}
                   </div>
                 </div>
               </div>
