@@ -69,7 +69,7 @@ export const DigitalTwinKPIs = React.memo(function DigitalTwinKPIs({
           </p>
         </div>
 
-        {/* KPI 2: Canopy Cover % & Individual Tree Count */}
+        {/* KPI 2: Canopy Cover % (fCOVER) */}
         <div className="bg-[#1f2d3a] border border-[#2e4052] hover:border-[#8D5B4C]/40 p-4 rounded-2xl space-y-1 shadow-lg relative overflow-hidden group transition-all">
           <div className="flex items-center justify-between text-[#A8A093] text-[10px] font-bold uppercase tracking-wider">
             <span>{t("workspace.kpis.canopyCover")}</span>
@@ -79,34 +79,27 @@ export const DigitalTwinKPIs = React.memo(function DigitalTwinKPIs({
             <span className="text-2xl font-black text-[#F9F8F6] font-mono">
               {isLoading ? <LoadingPulse /> : `${satelliteData?.canopyCover?.meanPct || 0}%`}
             </span>
-            {satelliteData?.treeCrowns?.meanCanopyDiameterM > 0 && (
-              <span className="text-xs font-mono font-bold text-[#8D5B4C] bg-[#8D5B4C]/20 border border-[#8D5B4C]/30 px-2 py-0.5 rounded-md" title={isAr ? "متوسط قطر عرش الشجرة" : "Diamètre moyen de la canopée"}>
-                Ø {satelliteData.treeCrowns.meanCanopyDiameterM}m
-              </span>
-            )}
           </div>
           <p className="text-[10px] font-bold text-[#D8D2C5] truncate">
             {isLoading
               ? (isAr ? "جارٍ تحليل الغطاء النباتي..." : "Analyse du couvert en cours...")
               : (() => {
                 const category = satelliteData?.treeCrowns?.landCoverCategory;
-                const count = satelliteData?.treeCrowns?.treeCount || 0;
                 const pct = satelliteData?.canopyCover?.meanPct || 0;
 
                 if (category === "BARE_FALLOW_LAND" || pct < 5) {
-                  return isAr ? "🏜️ أرض بور فارغة (0 أشجار)" : "🏜️ Sol nu (0 arbre)";
+                  return isAr ? "🏜️ أرض بور فارغة" : "🏜️ Sol nu / Jachère";
                 }
                 if (category === "SEASONAL_ANNUAL_CROP") {
                   return isAr ? "🌾 محصول حقلي موسمي" : "🌾 Culture saisonnière";
                 }
-                if (count > 0) {
-                  return isAr
-                    ? `🌳 ${count} شجرة مكتشفة (${pct >= 35 ? "عرش كثيف 🟢" : "عرش متوازن 🟢"})`
-                    : `🌳 ${count} arbres (${pct >= 35 ? "Canopée dense 🟢" : "Canopée équilibrée 🟢"})`;
+                if (pct >= 35) {
+                  return isAr ? "عرش كثيف متجانس 🟢" : "Canopée dense 🟢";
                 }
-                return pct >= 35
-                  ? (isAr ? "عرش كثيف متجانس 🟢" : "Canopée dense 🟢")
-                  : (isAr ? "عرش متوازن 🟢" : "Canopée équilibrée 🟢");
+                if (pct >= 18) {
+                  return isAr ? "عرش متوازن 🟢" : "Canopée équilibrée 🟢";
+                }
+                return isAr ? "غطاء نباتي فتئ 🟡" : "Couvert jeune 🟡";
               })()}
           </p>
         </div>
