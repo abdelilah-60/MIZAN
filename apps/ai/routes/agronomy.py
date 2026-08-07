@@ -26,9 +26,13 @@ class AgronomicCalculationRequest(BaseModel):
     soil_nitrogen: Optional[float] = None
     soil_phosphorus: Optional[float] = None
     soil_potassium: Optional[float] = None
+    canopy_cover_pct: Optional[float] = None
 
 @router.post("/calculate")
 def calculate_recommendations(request: AgronomicCalculationRequest, session=Depends(get_db_session)):
+    crop_lower = request.crop.lower()
+    is_shd = any(k in crop_lower for k in ["arbequina", "arbosana", "koroneiki"])
+
     # ── 1. Query variety-specific Kc from Memgraph ──
     query_kc = """
     MATCH (v:Variety {name: $crop})-[r:HAS_KC_AT]->(s:Stage {name: $stage})
@@ -39,15 +43,15 @@ def calculate_recommendations(request: AgronomicCalculationRequest, session=Depe
     if res_kc and res_kc["kc"] is not None:
         kc = res_kc["kc"]
     else:
-        # Fallback defaults if relation doesn't exist
+        # Fallback defaults if relation doesn't exist (Arbequina has lower Kc in SHD)
         fallbacks = {
-            "DORMANCE": 0.45,
-            "DEBOURREMENT": 0.55,
-            "FLORAISON": 0.60,
-            "NOUAISON": 0.65,
-            "CROISSANCE": 0.70,
-            "VERAISON": 0.55,
-            "RECOLTE": 0.50
+            "DORMANCE": 0.40 if is_shd else 0.45,
+            "DEBOURREMENT": 0.48 if is_shd else 0.55,
+            "FLORAISON": 0.55 if is_shd else 0.60,
+            "NOUAISON": 0.58 if is_shd else 0.65,
+            "CROISSANCE": 0.65 if is_shd else 0.70,
+            "VERAISON": 0.50 if is_shd else 0.55,
+            "RECOLTE": 0.45 if is_shd else 0.50
         }
         kc = fallbacks.get(request.stage.upper(), 0.55)
 
@@ -77,25 +81,42 @@ def calculate_recommendations(request: AgronomicCalculationRequest, session=Depe
             "ra_constant": 12.0
         }
 
-    # ── 3. Irrigation Calculations ──
+    # ── 3. Irrigation Calculations (FAO-56 Paper 56, Chapter 8 with Kr Canopy Reduction Factor) ──
     tavg = (request.tmax + request.tmin) / 2
     temp_diff = max(0.1, request.tmax - request.tmin)
     ra = rules.get("ra_constant", 12.0)
     
-    # Hargreaves equation
+    # Hargreaves equation for ET0
     et0 = 0.0023 * (tavg + 17.8) * math.pow(temp_diff, 0.5) * ra
-    etc = et0 * kc
+
+    # Ground Cover Reduction Factor Kr = min(1.0, 2.0 * fCOVER)
+    if request.canopy_cover_pct is not None and request.canopy_cover_pct > 0:
+        kr = min(1.0, max(0.2, 2.0 * (request.canopy_cover_pct / 100.0)))
+    else:
+        kr = 0.60 if is_shd else 0.80
+
+    etc = et0 * kc * kr
     net_water_depth = max(0.0, etc - request.precipitation)
-    
+
+    # Variety-aware tree density fallback if density is unconfigured or default
+    density = request.tree_density
+    if density < 50 or density > 3500:
+        density = 1666.0 if is_shd else 200.0
+    elif density == 200.0 and is_shd:
+        density = 1666.0  # Correct default for Arbequina SHD
 
     liters_per_tree = 0.0
     duration_minutes = 0
     
-    if request.tree_density > 0:
-        liters_per_tree = (net_water_depth * 10000) / request.tree_density
+    if density > 0:
+        liters_per_tree = (net_water_depth * 10000) / density
         
-        # Avoid division by zero
-        divider = request.drippers_per_tree * request.dripper_flow_rate * request.efficiency
+        # Dripper delivery rate in L/h per tree with efficiency
+        drippers = max(1, request.drippers_per_tree)
+        flow_rate = max(0.5, request.dripper_flow_rate)
+        eff = max(0.5, min(1.0, request.efficiency))
+
+        divider = drippers * flow_rate * eff
         if divider > 0:
             hours = liters_per_tree / divider
             duration_minutes = int(round(hours * 60))
