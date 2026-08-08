@@ -337,10 +337,11 @@ agronomyRoute.get("/:fieldId/recommendations", async (c) => {
     const delta = 0.409 * Math.sin(2 * Math.PI * fbDoy / 365 - 1.39);
     const ws = Math.acos(Math.max(-1, Math.min(1, -Math.tan(latRad) * Math.tan(delta))));
     const Gsc = 0.0820;
-    const fbRa = (24 * 60 / Math.PI) * Gsc * dr * (
+    const fbRaMj = (24 * 60 / Math.PI) * Gsc * dr * (
       ws * Math.sin(latRad) * Math.sin(delta) +
       Math.cos(latRad) * Math.cos(delta) * Math.sin(ws)
     );
+    const fbRa = fbRaMj * 0.408; // Convert MJ/m²/day to mm/day equivalent (FAO-56)
 
     // Use real weather data from FieldDailyMetrics if available
     const fbTmax = fbLatestDaily?.tmax ?? 25;

@@ -12,7 +12,7 @@ router = APIRouter(
 
 # ── FAO-56 Extraterrestrial Radiation (Ra) ──
 def compute_ra(latitude_deg: float, day_of_year: int) -> float:
-    """FAO-56 Equation 21: Extraterrestrial radiation Ra (MJ/m²/day)"""
+    """FAO-56 Equation 21: Extraterrestrial radiation Ra in mm/day equivalent (MJ/m²/day * 0.408)"""
     lat = math.radians(latitude_deg)
     dr = 1 + 0.033 * math.cos(2 * math.pi * day_of_year / 365)
     delta = 0.409 * math.sin(2 * math.pi * day_of_year / 365 - 1.39)
@@ -20,11 +20,12 @@ def compute_ra(latitude_deg: float, day_of_year: int) -> float:
         max(-1.0, min(1.0, -math.tan(lat) * math.tan(delta)))
     )
     Gsc = 0.0820  # Solar constant MJ/m²/min
-    ra = (24 * 60 / math.pi) * Gsc * dr * (
+    ra_mj = (24 * 60 / math.pi) * Gsc * dr * (
         ws * math.sin(lat) * math.sin(delta) +
         math.cos(lat) * math.cos(delta) * math.sin(ws)
     )
-    return ra
+    # Convert MJ/m²/day to mm/day equivalent evaporation (FAO-56 Chapter 3)
+    return ra_mj * 0.408
 
 # ── Kc Interpolation between phenological stages ──
 KC_STAGES_STANDARD = [
