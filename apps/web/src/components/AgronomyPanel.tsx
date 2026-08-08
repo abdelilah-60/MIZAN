@@ -25,8 +25,8 @@ export const AgronomyPanel = React.memo(function AgronomyPanel({
   const { t, i18n } = useTranslation();
   const isAr = i18n.language === "ar";
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
-  const [isIrrigationOpen, setIsIrrigationOpen] = useState(true);
-  const [isFertilizationOpen, setIsFertilizationOpen] = useState(true);
+  const [isIrrigationOpen, setIsIrrigationOpen] = useState(false);
+  const [isFertilizationOpen, setIsFertilizationOpen] = useState(false);
 
   const durationMinutes = data.recommendations?.water?.durationMinutes || 0;
   const durationHours = (durationMinutes / 60).toFixed(1);
