@@ -563,31 +563,7 @@ export const AgronomyPanel = React.memo(function AgronomyPanel({
 
       </div>
 
-      {/* Modern Compact Technical Parameters Summary Banner */}
-      <div className="bg-[#1f2d3a] border border-[#2e4052] rounded-3xl p-4 flex flex-col md:flex-row items-center justify-between gap-4 shadow-xl">
-        <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-2xl bg-[#8D5B4C]/20 border border-[#8D5B4C]/40 flex items-center justify-center text-xl text-[#F9F8F6]">
-            ⚙️
-          </div>
-          <div className="space-y-0.5">
-            <h5 className="text-xs font-black text-[#F9F8F6]">
-              {isAr ? "المعايير الفنية لنظام الري والتربة" : "Paramètres techniques enregistrés"}
-            </h5>
-            <p className="text-[11px] text-[#D8D2C5] font-mono">
-              🚰 {form.dripperFlowRate || "4.0"} L/h ({form.drippersPerTree || "4"} {isAr ? "قطارات" : "goutteurs"}) &bull; 🧪 pH: {form.ph || "7.8"} ({form.organicMatter || "1.8"}% {isAr ? "مادة عضوية" : "MO"}) &bull; 🫒 {isAr ? "الهدف" : "Cible"}: {form.targetYield || "5.0"} t/ha
-            </p>
-          </div>
-        </div>
 
-        <button
-          type="button"
-          onClick={() => setIsSettingsModalOpen(true)}
-          className="px-4 py-2 bg-[#16212b] hover:bg-[#28394a] border border-[#8D5B4C]/40 text-[#F9F8F6] text-xs font-bold rounded-xl transition-all active:scale-95 whitespace-nowrap flex items-center gap-1.5"
-        >
-          <span>✏️</span>
-          <span>{isAr ? "تعديل المعايير" : "Modifier les paramètres"}</span>
-        </button>
-      </div>
 
       {/* Dedicated Settings Modal */}
       <FieldSettingsModal

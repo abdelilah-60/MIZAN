@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import type {
   Field,
   WeatherData,
@@ -15,7 +15,6 @@ import { formatDate } from "../lib/utils";
 import { SatelliteMapCanvas } from "./SatelliteMapCanvas";
 import { SpectralLayerSwitcher } from "./SpectralLayerSwitcher";
 import { DigitalTwinKPIs } from "./DigitalTwinKPIs";
-import { SmartRecommendationCard } from "./SmartRecommendationCard";
 import { SpectralIndexGuide } from "./SpectralIndexGuide";
 import { ReportViewer } from "./ReportViewer";
 import { useTranslation } from "react-i18next";
@@ -66,7 +65,7 @@ export function FieldWorkspace({
   onLogOperation,
   onDeleteOperation,
   onSaveAgronomy,
-  onLogOperationDirectly,
+  onLogOperationDirectly: _onLogOperationDirectly,
   onClose,
 }: FieldWorkspaceProps) {
   const { t, i18n } = useTranslation();
@@ -123,180 +122,8 @@ export function FieldWorkspace({
     RECOLTE: t("phenology.RECOLTE"),
   };
 
-  const [isDismissed, setIsDismissed] = useState(false);
-  const [isAutoLogging, setIsAutoLogging] = useState(false);
   const [showIndexGuide, setShowIndexGuide] = useState(false);
   const [showReport, setShowReport] = useState(false);
-
-  const recommendedMinutes = agronomyData?.recommendations?.water?.durationMinutes || 0;
-  const recommendedLiters = agronomyData?.recommendations?.water?.litersPerTree || 0;
-
-  const smartRec = useMemo(() => {
-    if (!summary?.currentStage) return null;
-    const stage = summary.currentStage;
-    const npk = agronomyData?.recommendations?.npk;
-    const cropName = field.cropType || (isAr ? "الزيتون المغربي" : "Olive Marocaine");
-
-    switch (stage) {
-      case "DORMANCE":
-        return {
-          title: t("phenology.DORMANCE"),
-          desc: isAr
-            ? `يُنصح ببدء التسميد العضوي لتغذية التربة وتحسين بنية الحقل وإمداد أشجار (${cropName}) بالمادة العضوية قبل انفتاح البراعم.`
-            : `Il est recommandé d'appliquer un amendement organique pour nourrir le sol et préparer les arbres de (${cropName}) avant le débourrement.`,
-          type: "ORGANIC_AMENDMENT",
-          icon: "🍂",
-          btnText: isAr ? "تطبيق التسميد العضوي" : "Appliquer l'amendement organique",
-          prefill: {
-            fertilizerType: "BOVINE",
-            state: "DECOMPOSED",
-            quantity: "20",
-            unit: "Kg/arbre"
-          }
-        };
-      case "DEBOURREMENT":
-        return {
-          title: t("phenology.DEBOURREMENT"),
-          desc: isAr
-            ? `هذه هي بداية النمو الخضري النشط لصنف (${cropName}). يُنصح بإضافة الدفعة الربيعية الأولى: ${npk?.n || 31} كجم/هكتار من النيتروجين لدعم الأغصان الفتية.`
-            : `C'est le début de la croissance vegetative active pour la variété (${cropName}). Appliquez la 1ère dose d'azote: ${npk?.n || 31} kg/ha.`,
-          type: "FERTILIZER",
-          icon: "🧪",
-          btnText: isAr ? "تطبيق النيتروجين" : "Appliquer l'azote",
-          prefill: {
-            fertilizerType: "NPK",
-            quantity: String(npk?.n || 31),
-            unit: "kg",
-            n_percent: "46",
-            p_percent: "0",
-            k_percent: "0"
-          }
-        };
-      case "FLORAISON":
-        return {
-          title: t("phenology.FLORAISON"),
-          desc: isAr
-            ? `لتجنب تساقط الأزهار والحفاظ على الحمل لصنف (${cropName})، يجب ضبط الري والامتناع عن التسميد النيتروجيني المفرط مع رش الفوسفات والبورون الورقي.`
-            : `Pour éviter la chute des fleurs sur la variété (${cropName}), ajustez l'irrigation et privilégiez un apport foliaire en phosphore et bore.`,
-          type: "FERTILIZER",
-          icon: "🌸",
-          btnText: isAr ? "تطبيق الفوسفات" : "Appliquer le phosphore",
-          prefill: {
-            fertilizerType: "NPK",
-            quantity: String(npk?.p || 10),
-            unit: "kg",
-            n_percent: "0",
-            p_percent: "30",
-            k_percent: "0"
-          }
-        };
-      case "NOUAISON":
-        return {
-          title: t("phenology.NOUAISON"),
-          desc: isAr
-            ? `الثمار الفتية لصنف (${cropName}) تبدأ في النمو وتتطلب التغذية المتوازنة. يوصى بإضافة الجرعة الثانية: ${Math.round((npk?.n || 30) * 0.35)} كجم/هكتار لدعم العقد.`
-            : `Les jeunes fruits de la variété (${cropName}) entrent en phase de nouaison. Appliquez la 2ème dose d'azote: ${Math.round((npk?.n || 30) * 0.35)} kg/ha.`,
-          type: "FERTILIZER",
-          icon: "👶",
-          btnText: isAr ? "تطبيق دفعة عقد الثمار" : "Appliquer la dose de nouaison",
-          prefill: {
-            fertilizerType: "NPK",
-            quantity: String(Math.round((npk?.n || 30) * 0.35)),
-            unit: "kg",
-            n_percent: "21",
-            p_percent: "0",
-            k_percent: "0"
-          }
-        };
-      case "CROISSANCE":
-        return {
-          title: t("phenology.CROISSANCE"),
-          desc: isAr
-            ? `هذه هي أهم فترة لتراكم الزيت وامتلاء الثمار في الزيتون (${cropName}). يُنصح بإضافة الدفعة الأساسية للبوتاسيوم: ${npk?.k || 40} كجم/هكتار لدعم حجم وجودة الحبة.`
-            : `Période cruciale pour l'accumulation d'huile et le grossissement des olives (${cropName}). Appliquez la dose de potassium: ${npk?.k || 40} kg/ha.`,
-          type: "FERTILIZER",
-          icon: "📈",
-          btnText: isAr ? "تطبيق سماد البوتاسيوم" : "Appliquer le potassium",
-          prefill: {
-            fertilizerType: "NPK",
-            quantity: String(npk?.k || 40),
-            unit: "kg",
-            n_percent: "0",
-            p_percent: "0",
-            k_percent: "50"
-          }
-        };
-      case "VERAISON":
-        return {
-          title: t("phenology.VERAISON"),
-          desc: isAr
-            ? `ثمار الصنف (${cropName}) تبدأ بتغيير اللون والنضج. يُنصح بمراقبة ذبابة الزيتون لحماية المحصول، والتوقف عن التسميد الكيميائي تمهيداً للجني.`
-            : `Les olives de (${cropName}) commencent la véraison. Surveillez la mouche de l'olive et stoppez la fertilisation chimique avant récolte.`,
-          type: "PESTICIDE",
-          icon: "🛡️",
-          btnText: isAr ? "تسجيل معالجة وقاية الثمار" : "Traitement de protection des fruits",
-          prefill: {
-            activeIngredient: "DELTAMETHRINE",
-            targetPest: "FLY",
-            quantity: "1.5",
-            unit: "L",
-            darDays: "14"
-          }
-        };
-      case "RECOLTE":
-        return {
-          title: t("phenology.RECOLTE"),
-          desc: isAr
-            ? `حان موعد قطف حبات الصنف (${cropName}). يوصى بالجني اليدوي أو الهزازات اللطيفة لتجنب جرح الأغصان المنتجة للموسم القادم.`
-            : `La période de récolte des olives (${cropName}) a sonné. Privilégiez un peignage manuel ou un vibreur adapté pour préserver le rameau.`,
-          type: "HARVEST",
-          icon: "🫒",
-          btnText: isAr ? "تسجيل عملية الجني والحصاد" : "Enregistrer la récolte",
-          prefill: {
-            method: "MANUAL",
-            quantity: "2500",
-            destination: "OIL",
-            maturityIndex: "TURNING"
-          }
-        };
-      default:
-        return null;
-    }
-  }, [summary?.currentStage, agronomyData, field.cropType, isAr, t]);
-
-  // Check if there is any irrigation logged today
-  const hasIrrigationToday = useMemo(() => {
-    return operationsData?.some(
-      (op) =>
-        op.type === "IRRIGATION" &&
-        new Date(op.date).toDateString() === new Date().toDateString()
-    );
-  }, [operationsData]);
-
-  const showComplianceBanner =
-    recommendedMinutes > 0 && !hasIrrigationToday && !isDismissed && !loadingAgronomy && !!onLogOperationDirectly;
-
-  const handleAutoLog = async () => {
-    if (!onLogOperationDirectly) return;
-    setIsAutoLogging(true);
-    try {
-      await onLogOperationDirectly({
-        type: "IRRIGATION",
-        fieldId: field.id,
-        metadata: {
-          volumeM3: String(Math.round((recommendedLiters * ((agronomyData?.recommendations?.water as any)?.treeDensity || 200) * field.area) / 1000)),
-          durationMinutes: String(recommendedMinutes),
-          waterSource: "WELL",
-          notes: isAr ? "تسجيل أوتوماتيكي عبر توصية منصة ميزان" : "Enregistrement automatique via recommandation Mizan"
-        }
-      });
-      setIsDismissed(true);
-    } catch (e) {
-      console.error("Auto-logging failed:", e);
-    } finally {
-      setIsAutoLogging(false);
-    }
-  };
 
   // Auto-fetch data for the active tab when tab changes or field changes
   useEffect(() => {
@@ -495,19 +322,6 @@ export function FieldWorkspace({
         {/* TAB 1: AGRONOMY (IRRIGATION & FERTIGATION RECOMMENDATIONS) */}
         {activeTab === "agronomy" && (
           <div className="space-y-6 animate-in fade-in duration-200">
-            {/* Integrated Recommendation Cards (Shown ONLY inside Irrigation & Fertigation Tab) */}
-            <SmartRecommendationCard
-              smartRec={smartRec}
-              showComplianceBanner={showComplianceBanner}
-              recommendedMinutes={recommendedMinutes}
-              recommendedLiters={recommendedLiters}
-              isAutoLogging={isAutoLogging}
-              handleAutoLog={handleAutoLog}
-              onLogOperation={onLogOperation}
-              onSetIsDismissed={setIsDismissed}
-              field={field}
-            />
-
             {loadingAgronomy ? (
               <div className="text-center py-16 text-[#D8D2C5] animate-pulse font-medium">
                 {t("common.loading")}
