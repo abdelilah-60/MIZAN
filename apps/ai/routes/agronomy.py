@@ -175,7 +175,7 @@ def calculate_recommendations(request: AgronomicCalculationRequest, session=Depe
             hours = liters_per_tree / divider
             duration_minutes = int(round(hours * 60))
 
-    # ── 4. NPK Fertilization ──
+    # ── 4. NPK Fertilization (Digital Twin Biological Engine) ──
     n_mult = 1.0
     p_mult = 1.0
     k_mult = 1.0
@@ -188,29 +188,34 @@ def calculate_recommendations(request: AgronomicCalculationRequest, session=Depe
         n_mult = rules.get("off_year_n_multiplier", 0.8)
         p_mult = rules.get("off_year_p_multiplier", 1.0)
         k_mult = rules.get("off_year_k_multiplier", 0.6)
+
+    # Mitscherlich Non-Linear Yield-Nutrient Response Curve (Prevents linear explosion at high yield targets)
+    y_target = max(0.5, request.target_yield)
+    n_max_cap = 180.0
+    p_max_cap = 60.0
+    k_max_cap = 250.0
+
+    n_gross = n_max_cap * (1.0 - math.exp(-0.09 * y_target)) * n_mult
+    p_gross = p_max_cap * (1.0 - math.exp(-0.08 * y_target)) * p_mult
+    k_gross = k_max_cap * (1.0 - math.exp(-0.07 * y_target)) * k_mult
+    
+    # Regional Soil Baselines (Avoids 0-soil deduction distortion if analysis is missing)
+    om_pct = request.soil_organic_matter if request.soil_organic_matter is not None else 1.5
+    p_olsen = request.soil_phosphorus if request.soil_phosphorus is not None else 18.0
+    k_exch = request.soil_potassium if request.soil_potassium is not None else 220.0
+
+    n_soil = om_pct * rules.get("soil_n_per_pct_om", 10.0)
+    p_soil = p_olsen * rules.get("soil_p_per_ppm_olsen", 0.5)
+    k_soil = k_exch * rules.get("soil_k_per_ppm_exchangeable", 0.3)
         
-    n_export = rules.get("n_export_per_ton", 15.0) * n_mult
-    p_export = rules.get("p2o5_export_per_ton", 5.0) * p_mult
-    k_export = rules.get("k2o_export_per_ton", 20.0) * k_mult
-    
-    n_gross = n_export * request.target_yield
-    p_gross = p_export * request.target_yield
-    k_gross = k_export * request.target_yield
-    
-    n_soil = 0.0
-    p_soil = 0.0
-    k_soil = 0.0
-    
-    if request.soil_organic_matter is not None:
-        n_soil = request.soil_organic_matter * rules.get("soil_n_per_pct_om", 10.0)
-    if request.soil_phosphorus is not None:
-        p_soil = request.soil_phosphorus * rules.get("soil_p_per_ppm_olsen", 0.5)
-    if request.soil_potassium is not None:
-        k_soil = request.soil_potassium * rules.get("soil_k_per_ppm_exchangeable", 0.3)
-        
-    n_rec = max(0.0, n_gross - n_soil) / 0.7
-    p_rec = max(0.0, p_gross - p_soil) / 0.5
-    k_rec = max(0.0, k_gross - k_soil) / 0.6
+    # Net fertigation requirement with fertigation efficiency dividers and hard biological safety caps
+    n_rec_raw = max(0.0, n_gross - n_soil) / 0.70
+    p_rec_raw = max(0.0, p_gross - p_soil) / 0.50
+    k_rec_raw = max(0.0, k_gross - k_soil) / 0.60
+
+    n_rec = round(min(n_max_cap, n_rec_raw))
+    p_rec = round(min(p_max_cap, p_rec_raw))
+    k_rec = round(min(k_max_cap, k_rec_raw))
 
     # Monthly NPK Distribution (February to September active season)
     monthly_weights = [

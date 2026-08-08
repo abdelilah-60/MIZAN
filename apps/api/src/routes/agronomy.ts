@@ -388,9 +388,33 @@ agronomyRoute.get("/:fieldId/recommendations", async (c) => {
 
     const soilTest = fbSoilAnalyses[0];
     const targetYield = fbYieldConfig?.targetYield ?? 5.0;
-    const fbNRec = Math.round((15.0 * targetYield) / 0.7);
-    const fbPRec = Math.round((5.0 * targetYield) / 0.5);
-    const fbKRec = Math.round((20.0 * targetYield) / 0.6);
+    const yTarget = Math.max(0.5, targetYield);
+
+    const isOnYear = (fbYieldConfig?.bearingStatus ?? "NORMAL") === "ON_YEAR";
+    const isOffYear = (fbYieldConfig?.bearingStatus ?? "NORMAL") === "OFF_YEAR";
+    const nMult = isOffYear ? 0.8 : 1.0;
+    const pMult = 1.0;
+    const kMult = isOnYear ? 1.2 : isOffYear ? 0.6 : 1.0;
+
+    const nMaxCap = 180.0;
+    const pMaxCap = 60.0;
+    const kMaxCap = 250.0;
+
+    const nGross = nMaxCap * (1.0 - Math.exp(-0.09 * yTarget)) * nMult;
+    const pGross = pMaxCap * (1.0 - Math.exp(-0.08 * yTarget)) * pMult;
+    const kGross = kMaxCap * (1.0 - Math.exp(-0.07 * yTarget)) * kMult;
+
+    const omPct = soilTest?.organicMatter ? Number(soilTest.organicMatter) : 1.5;
+    const pOlsen = soilTest?.phosphorusPpm ? Number(soilTest.phosphorusPpm) : 18.0;
+    const kExch = soilTest?.potassiumPpm ? Number(soilTest.potassiumPpm) : 220.0;
+
+    const nSoil = omPct * 10.0;
+    const pSoil = pOlsen * 0.5;
+    const kSoil = kExch * 0.3;
+
+    const fbNRec = Math.round(Math.min(nMaxCap, Math.max(0, (nGross - nSoil) / 0.70)));
+    const fbPRec = Math.round(Math.min(pMaxCap, Math.max(0, (pGross - pSoil) / 0.50)));
+    const fbKRec = Math.round(Math.min(kMaxCap, Math.max(0, (kGross - kSoil) / 0.60)));
 
     const fbMonthlyWeights = [
       { month: "Février", monthNum: 2, nPct: 0.15, pPct: 0.30, kPct: 0.10, stage: "Débourrement" },

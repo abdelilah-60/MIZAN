@@ -326,7 +326,7 @@ export const AgronomyPanel = React.memo(function AgronomyPanel({
                   <span>{isAr ? "برنامج التسميد والجدول الشهري (NPK & Fertigation)" : "Plan de fertilisation NPK & Calendrier mensuel"}</span>
                 </h5>
                 <p className="text-[11px] text-[#A8A093] font-mono">
-                  {isAr ? "المستهدف" : "Cible"}: <span className="text-[#F9F8F6] font-bold">{data.recommendations?.npk?.targetYield || 5} t/ha</span> &bull; {data.recommendations?.npk?.bearingStatus === "ON_YEAR" ? (isAr ? "حمل غزير" : "On-year") : data.recommendations?.npk?.bearingStatus === "OFF_YEAR" ? (isAr ? "تناوب خفيف" : "Off-year") : (isAr ? "إنتاج متوازن" : "Normal")}
+                  🤖 <span className="text-amber-400/90 font-bold">{isAr ? "التوأم الرقمي الفسيولوجي" : "Jumeau Numérique"}</span> &bull; {isAr ? "المستهدف" : "Cible"}: <span className="text-[#F9F8F6] font-bold">{data.recommendations?.npk?.targetYield || 5} t/ha</span> &bull; {data.recommendations?.npk?.bearingStatus === "ON_YEAR" ? (isAr ? "حمل غزير" : "On-year") : data.recommendations?.npk?.bearingStatus === "OFF_YEAR" ? (isAr ? "تناوب خفيف" : "Off-year") : (isAr ? "إنتاج متوازن" : "Normal")}
                 </p>
               </div>
             </div>
