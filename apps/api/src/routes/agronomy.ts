@@ -1,5 +1,7 @@
 import { Hono } from "hono";
 import { prisma } from "../lib/prisma";
+import centroid from "@turf/centroid";
+import { polygon } from "@turf/helpers";
 
 const AI_BASE_URL = process.env.AI_SERVICE_URL || "http://localhost:8000";
 const AI_TIMEOUT_MS = parseInt(process.env.AI_TIMEOUT_MS || "5000", 10);
@@ -195,6 +197,7 @@ agronomyRoute.get("/:fieldId/recommendations", async (c) => {
       orderBy: { analysisDate: "desc" },
       take: 1
     });
+    const soilTest = soilAnalyses[0];
     const yieldConfig = await prisma.yieldConfig.findUnique({ where: { fieldId } });
     
     const latestDaily = await prisma.fieldDailyMetrics.findFirst({
@@ -202,7 +205,30 @@ agronomyRoute.get("/:fieldId/recommendations", async (c) => {
       orderBy: { date: "desc" }
     });
 
-    // 2. Prepare payload for the Python AI calculation service using exact registered irrigationConfig
+    // 2. Extract latitude from field geoPolygon for dynamic Ra computation
+    let latitude = 33.0; // Default: central Morocco
+    try {
+      const geoData: any = typeof field.geoPolygon === 'string'
+        ? JSON.parse(field.geoPolygon as string)
+        : field.geoPolygon;
+      const coords = geoData.coordinates ? geoData.coordinates : geoData;
+      const poly = polygon(coords);
+      const center = centroid(poly);
+      latitude = center.geometry.coordinates[1];
+    } catch (e) {
+      console.warn("Could not extract latitude from geoPolygon, using default 33.0");
+    }
+
+    // Compute GDD progress within current stage for Kc interpolation
+    const accGdd = latestDaily?.accumulatedGdd ?? 0;
+    const gddToNext = latestDaily?.gddToNextStage ?? 100;
+    const gddProgressPct = gddToNext > 0 ? Math.min(1.0, accGdd / (accGdd + gddToNext)) : 0.5;
+
+    const today = new Date();
+    const startOfYear = new Date(today.getFullYear(), 0, 0);
+    const dayOfYear = Math.floor((today.getTime() - startOfYear.getTime()) / 86400000);
+
+    // 3. Prepare payload for the Python AI calculation service
     const payloadData = {
       crop: field.cropType || "Picholine Marocaine",
       stage: latestDaily?.currentStage || "DORMANCE",
@@ -215,6 +241,9 @@ agronomyRoute.get("/:fieldId/recommendations", async (c) => {
       efficiency: irrConfig?.efficiency ?? 0.85,
       target_yield: yieldConfig?.targetYield ?? 5.0,
       bearing_status: yieldConfig?.bearingStatus ?? "NORMAL",
+      latitude: latitude,
+      day_of_year: dayOfYear,
+      gdd_progress_pct: gddProgressPct,
       soil_ph: soilTest?.ph ?? null,
       soil_organic_matter: soilTest?.organicMatter ?? null,
       soil_nitrogen: soilTest?.nitrogen ?? null,
@@ -239,6 +268,9 @@ agronomyRoute.get("/:fieldId/recommendations", async (c) => {
 
     const waterRec = {
       et0: result.irrigation.et0,
+      kc: result.irrigation.kc,
+      kr: result.irrigation.kr,
+      ra: result.irrigation.ra,
       etc: result.irrigation.etc,
       precipitation: result.irrigation.precipitation,
       netWaterDepthMm: result.irrigation.netWaterDepthMm,
@@ -254,7 +286,10 @@ agronomyRoute.get("/:fieldId/recommendations", async (c) => {
       targetYield: yieldConfig?.targetYield ?? 5.0,
       bearingStatus: yieldConfig?.bearingStatus ?? "NORMAL",
       soilTestDate: soilTest ? soilTest.analysisDate : null,
-      configured: !!yieldConfig
+      configured: !!yieldConfig,
+      monthlySchedule: result.fertilization.monthlySchedule || [],
+      micronutrients: result.fertilization.micronutrients || null,
+      foliarSprays: result.fertilization.foliarSprays || []
     };
 
     return c.json({
@@ -265,48 +300,133 @@ agronomyRoute.get("/:fieldId/recommendations", async (c) => {
   } catch (error: any) {
     console.error("Failed to generate recommendations via AI service, applying fallback:", error);
     
-    // ── FALLBACK COMPUTATION IF AI SERVICE IS DOWN ──
-    const irrConfig = await prisma.irrigationConfig.findUnique({ where: { fieldId } });
-    const soilAnalyses = await prisma.soilAnalysis.findMany({
+    // ── FALLBACK: Real Hargreaves computation using stored weather data ──
+    const fbField = await prisma.field.findUnique({ where: { id: fieldId } });
+    const fbIrrConfig = await prisma.irrigationConfig.findUnique({ where: { fieldId } });
+    const fbSoilAnalyses = await prisma.soilAnalysis.findMany({
       where: { fieldId },
       orderBy: { analysisDate: "desc" },
       take: 1
     });
-    const yieldConfig = await prisma.yieldConfig.findUnique({ where: { fieldId } });
+    const fbYieldConfig = await prisma.yieldConfig.findUnique({ where: { fieldId } });
+    const fbLatestDaily = await prisma.fieldDailyMetrics.findFirst({
+      where: { fieldId, season: new Date().getFullYear() },
+      orderBy: { date: "desc" }
+    });
 
-    const density = irrConfig?.treeDensity || 277;
-    const drippers = (irrConfig?.drippersPerTree && irrConfig.drippersPerTree > 0) ? irrConfig.drippersPerTree : 4;
-    const flowRate = (irrConfig?.dripperFlowRate && irrConfig.dripperFlowRate > 0) ? irrConfig.dripperFlowRate : 8.0;
-    const eff = (irrConfig?.efficiency && irrConfig.efficiency > 0) ? irrConfig.efficiency : 0.85;
+    // Extract latitude for dynamic Ra
+    let fbLat = 33.0;
+    try {
+      const geoData: any = typeof fbField?.geoPolygon === 'string'
+        ? JSON.parse(fbField.geoPolygon as string)
+        : fbField?.geoPolygon;
+      if (geoData) {
+        const coords = geoData.coordinates ? geoData.coordinates : geoData;
+        const poly = polygon(coords);
+        const center = centroid(poly);
+        fbLat = center.geometry.coordinates[1];
+      }
+    } catch { /* default latitude */ }
 
-    const et0 = 5.7;
-    const kc = 0.70;
-    const kr = 0.70; // Canopy reduction factor for 6x6 Haouzia (~35% canopy cover)
-    const netWaterDepthMm = parseFloat((et0 * kc * kr).toFixed(2)); // ~2.79 mm/day
+    // FAO-56 dynamic Ra computation
+    const fbToday = new Date();
+    const fbStartOfYear = new Date(fbToday.getFullYear(), 0, 0);
+    const fbDoy = Math.floor((fbToday.getTime() - fbStartOfYear.getTime()) / 86400000);
+    const latRad = fbLat * Math.PI / 180;
+    const dr = 1 + 0.033 * Math.cos(2 * Math.PI * fbDoy / 365);
+    const delta = 0.409 * Math.sin(2 * Math.PI * fbDoy / 365 - 1.39);
+    const ws = Math.acos(Math.max(-1, Math.min(1, -Math.tan(latRad) * Math.tan(delta))));
+    const Gsc = 0.0820;
+    const fbRa = (24 * 60 / Math.PI) * Gsc * dr * (
+      ws * Math.sin(latRad) * Math.sin(delta) +
+      Math.cos(latRad) * Math.cos(delta) * Math.sin(ws)
+    );
 
-    const liters = (netWaterDepthMm * 10000) / density;
+    // Use real weather data from FieldDailyMetrics if available
+    const fbTmax = fbLatestDaily?.tmax ?? 25;
+    const fbTmin = fbLatestDaily?.tmin ?? 15;
+    const fbPrecip = fbLatestDaily?.precipitation ?? 0;
+    const fbTavg = (fbTmax + fbTmin) / 2;
+    const fbTdiff = Math.max(0.1, fbTmax - fbTmin);
+
+    const fbEt0 = 0.0023 * (fbTavg + 17.8) * Math.pow(fbTdiff, 0.5) * fbRa;
+
+    // Determine Kc from stage
+    const fbCropLower = (fbField?.cropType || "").toLowerCase();
+    const fbIsShd = ["arbequina", "arbosana", "koroneiki"].some(k => fbCropLower.includes(k));
+    const fbStage = fbLatestDaily?.currentStage || "DORMANCE";
+    const fbKcMap: Record<string, number> = fbIsShd
+      ? { DORMANCE: 0.40, DEBOURREMENT: 0.48, FLORAISON: 0.55, NOUAISON: 0.58, CROISSANCE: 0.65, VERAISON: 0.50, RECOLTE: 0.45 }
+      : { DORMANCE: 0.45, DEBOURREMENT: 0.55, FLORAISON: 0.60, NOUAISON: 0.65, CROISSANCE: 0.70, VERAISON: 0.55, RECOLTE: 0.50 };
+    const fbKc = fbKcMap[fbStage] ?? 0.55;
+    const fbKr = fbIsShd ? 0.60 : 0.80;
+
+    const fbEtc = fbEt0 * fbKc * fbKr;
+    const fbNetMm = Math.max(0, fbEtc - fbPrecip);
+
+    const density = fbIrrConfig?.treeDensity || 277;
+    const drippers = (fbIrrConfig?.drippersPerTree && fbIrrConfig.drippersPerTree > 0) ? fbIrrConfig.drippersPerTree : 4;
+    const flowRate = (fbIrrConfig?.dripperFlowRate && fbIrrConfig.dripperFlowRate > 0) ? fbIrrConfig.dripperFlowRate : 8.0;
+    const eff = (fbIrrConfig?.efficiency && fbIrrConfig.efficiency > 0) ? fbIrrConfig.efficiency : 0.85;
+
+    const liters = (fbNetMm * 10000) / density;
     const hours = liters / (drippers * flowRate * eff);
 
     const waterRec = {
-      et0: et0,
-      etc: netWaterDepthMm,
-      precipitation: 0,
-      netWaterDepthMm: netWaterDepthMm,
+      et0: parseFloat(fbEt0.toFixed(2)),
+      kc: fbKc,
+      kr: fbKr,
+      ra: parseFloat(fbRa.toFixed(2)),
+      etc: parseFloat(fbEtc.toFixed(2)),
+      precipitation: fbPrecip,
+      netWaterDepthMm: parseFloat(fbNetMm.toFixed(2)),
       litersPerTree: parseFloat(liters.toFixed(1)),
       durationMinutes: Math.round(hours * 60),
-      configured: !!irrConfig
+      configured: !!fbIrrConfig
     };
 
-    const soilTest = soilAnalyses[0];
-    const targetYield = yieldConfig?.targetYield ?? 5.0;
+    const soilTest = fbSoilAnalyses[0];
+    const targetYield = fbYieldConfig?.targetYield ?? 5.0;
+    const fbNRec = Math.round((15.0 * targetYield) / 0.7);
+    const fbPRec = Math.round((5.0 * targetYield) / 0.5);
+    const fbKRec = Math.round((20.0 * targetYield) / 0.6);
+
+    const fbMonthlyWeights = [
+      { month: "Février", monthNum: 2, nPct: 0.15, pPct: 0.30, kPct: 0.10, stage: "Débourrement" },
+      { month: "Mars", monthNum: 3, nPct: 0.20, pPct: 0.20, kPct: 0.10, stage: "Floraison" },
+      { month: "Avril", monthNum: 4, nPct: 0.20, pPct: 0.15, kPct: 0.10, stage: "Nouaison" },
+      { month: "Mai", monthNum: 5, nPct: 0.15, pPct: 0.10, kPct: 0.15, stage: "Croissance" },
+      { month: "Juin", monthNum: 6, nPct: 0.15, pPct: 0.10, kPct: 0.20, stage: "Durcissement du noyau" },
+      { month: "Juillet", monthNum: 7, nPct: 0.10, pPct: 0.10, kPct: 0.20, stage: "Accumulation d'huile" },
+      { month: "Août", monthNum: 8, nPct: 0.05, pPct: 0.05, kPct: 0.10, stage: "Véraison" },
+      { month: "Septembre", monthNum: 9, nPct: 0.00, pPct: 0.00, kPct: 0.05, stage: "Maturation" },
+    ];
+
+    const fbMonthlySchedule = fbMonthlyWeights.map(w => ({
+      month: w.month,
+      monthNum: w.monthNum,
+      stage: w.stage,
+      n_kg: parseFloat((fbNRec * w.nPct).toFixed(1)),
+      p_kg: parseFloat((fbPRec * w.pPct).toFixed(1)),
+      k_kg: parseFloat((fbKRec * w.kPct).toFixed(1)),
+    }));
+
     const npkRec = {
-      n: Math.round((15.0 * targetYield) / 0.7),
-      p: Math.round((5.0 * targetYield) / 0.5),
-      k: Math.round((20.0 * targetYield) / 0.6),
+      n: fbNRec,
+      p: fbPRec,
+      k: fbKRec,
       targetYield,
-      bearingStatus: yieldConfig?.bearingStatus ?? "NORMAL",
+      bearingStatus: fbYieldConfig?.bearingStatus ?? "NORMAL",
       soilTestDate: soilTest ? soilTest.analysisDate : null,
-      configured: !!yieldConfig
+      configured: !!fbYieldConfig,
+      monthlySchedule: fbMonthlySchedule,
+      micronutrients: {
+        boron_g_per_tree: fbStage === "FLORAISON" ? 25.0 : 0.0,
+        zinc_g_per_tree: fbStage === "FLORAISON" ? 15.0 : 0.0,
+        iron_chelate_g_per_tree: (soilTest?.ph ?? 7.0) > 7.8 ? 10.0 : 0.0,
+        magnesium_kg_per_ha: (soilTest?.potassium ?? 0) > 300 ? 20.0 : 0.0
+      },
+      foliarSprays: []
     };
 
     return c.json({

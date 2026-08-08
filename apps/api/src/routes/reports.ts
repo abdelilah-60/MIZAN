@@ -1,7 +1,13 @@
 import { Hono } from "hono";
 import { prisma } from "../lib/prisma";
 
-export const reportsRoute = new Hono();
+type Variables = {
+  jwtPayload: {
+    userId: string;
+  };
+};
+
+export const reportsRoute = new Hono<{ Variables: Variables }>();
 
 // GET /api/reports/:fieldId/seasonal - Generate comprehensive seasonal field report
 reportsRoute.get("/:fieldId/seasonal", async (c) => {

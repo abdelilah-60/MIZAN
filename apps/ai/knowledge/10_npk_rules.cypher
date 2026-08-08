@@ -25,8 +25,6 @@ CREATE (:NPKRule {
   soil_k_per_ppm_exchangeable: 0.3,
   // Default yield target if not specified (t/ha)
   default_target_yield: 5.0,
-  // Hargreaves constant for Morocco
-  ra_constant: 12,
   notes: "Méthode du bilan prévisionnel adaptée à l'oléiculture marocaine. Sources: INRA Meknès, références FAO-56."
 });
 

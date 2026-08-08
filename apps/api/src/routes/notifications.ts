@@ -1,7 +1,13 @@
 import { Hono } from "hono";
 import { prisma } from "../lib/prisma";
 
-export const notificationsRoute = new Hono();
+type Variables = {
+  jwtPayload: {
+    userId: string;
+  };
+};
+
+export const notificationsRoute = new Hono<{ Variables: Variables }>();
 
 // GET /api/notifications - List user's notifications
 notificationsRoute.get("/", async (c) => {

@@ -71,6 +71,29 @@ export interface IrrigationRecommendation {
   durationMinutes: number;
 }
 
+export interface MonthlyNpkSchedule {
+  month: string;
+  monthNum: number;
+  stage: string;
+  n_kg: number;
+  p_kg: number;
+  k_kg: number;
+}
+
+export interface MicronutrientsRec {
+  boron_g_per_tree: number;
+  zinc_g_per_tree: number;
+  iron_chelate_g_per_tree: number;
+  magnesium_kg_per_ha: number;
+}
+
+export interface FoliarSprayRec {
+  target: string;
+  timing: string;
+  dose: string;
+  purpose: string;
+}
+
 export interface NpkRecommendation {
   n: number;
   p: number;
@@ -78,6 +101,9 @@ export interface NpkRecommendation {
   targetYield: number;
   bearingStatus: string;
   soilTestDate?: string;
+  monthlySchedule?: MonthlyNpkSchedule[];
+  micronutrients?: MicronutrientsRec;
+  foliarSprays?: FoliarSprayRec[];
 }
 
 export interface AgronomyRecommendation {
