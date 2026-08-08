@@ -169,77 +169,6 @@ export const AgronomyPanel = React.memo(function AgronomyPanel({
         </button>
       </div>
 
-      {/* Smart Agronomic Alerts Banner */}
-      {(() => {
-        const alerts = [];
-        const netWater = data.recommendations?.water?.netWaterDepthMm || 0;
-        const precip = data.recommendations?.water?.precipitation || 0;
-        const currentMonth = new Date().getMonth() + 1;
-
-        if (netWater > 4.5) {
-          alerts.push({
-            type: "danger",
-            icon: "🚨",
-            title: isAr ? "تحذير: إجهاد مائي حاد متوقع" : "Alerte: Stress hydrique élevé",
-            message: isAr ? `الاحتياج الصافي مرتفع (${netWater} mm/يوم). يُوصى بتشغيل الري لمدة ${durationHours} ساعة لمنع الإجهاد.` : `Besoin net élevé (${netWater} mm/j). Irrigation recommandée.`
-          });
-        }
-
-        if (precip >= 5.0) {
-          alerts.push({
-            type: "info",
-            icon: "🌧️",
-            title: isAr ? "فرصة توفير المياه (أمطار مسجلة)" : "Economie d'eau (Pluie mesurée)",
-            message: isAr ? `تم تسجيل ${precip} ملم من الأمطار. يمكن خفض مدة الري اليومية أو تأجيلها.` : `Pluie de ${precip} mm mesurée.`
-          });
-        }
-
-        if (currentMonth >= 5 && pctN < 40 && recN > 0) {
-          alerts.push({
-            type: "warning",
-            icon: "⚠️",
-            title: isAr ? "تأخر في التسميد النيتروجيني" : "Retard d'apport en azote",
-            message: isAr ? `تم إنجاز ${Math.round(pctN)}% فقط من الهدف السنوي للنيتروجين. يُرجى تدارك النقص.` : `Seulement ${Math.round(pctN)}% de l'azote appliqué.`
-          });
-        }
-
-        if (data.recommendations?.npk?.foliarSprays && data.recommendations.npk.foliarSprays.length > 0) {
-          alerts.push({
-            type: "success",
-            icon: "🌿",
-            title: isAr ? "توصية رش ورقي مستهدفة" : "Recommandation d'apport foliaire",
-            message: data.recommendations.npk.foliarSprays[0].target + " — " + data.recommendations.npk.foliarSprays[0].purpose
-          });
-        }
-
-        if (alerts.length === 0) return null;
-
-        return (
-          <div className="space-y-2">
-            {alerts.map((alert, aIdx) => (
-              <div 
-                key={aIdx}
-                className={`p-3.5 rounded-2xl border flex items-start gap-3 text-xs transition-all ${
-                  alert.type === "danger"
-                    ? "bg-rose-950/40 border-rose-800/50 text-rose-200"
-                    : alert.type === "warning"
-                    ? "bg-amber-950/40 border-amber-800/50 text-amber-200"
-                    : alert.type === "info"
-                    ? "bg-sky-950/40 border-sky-800/50 text-sky-200"
-                    : "bg-emerald-950/40 border-emerald-800/50 text-emerald-200"
-                }`}
-              >
-                <span className="text-lg">{alert.icon}</span>
-                <div className="space-y-0.5">
-                  <h5 className="font-black text-[#F9F8F6]">{alert.title}</h5>
-                  <p className="text-[11px] opacity-90">{alert.message}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        );
-      })()}
-
       {/* FULL-WIDTH ACCORDION CARDS CONTAINER */}
       <div className="space-y-4">
         
@@ -283,7 +212,60 @@ export const AgronomyPanel = React.memo(function AgronomyPanel({
 
           {/* Collapsible Content */}
           {isIrrigationOpen && (
-            <div className="p-5 pt-2 border-t border-[#2e4052]/60 space-y-4 bg-[#16212b]/40">
+            <div className="p-5 pt-4 border-t border-[#2e4052]/60 space-y-4 bg-[#16212b]/40">
+              
+              {/* Irrigation Water Alerts */}
+              {(() => {
+                const netWater = data.recommendations?.water?.netWaterDepthMm || 0;
+                const precip = data.recommendations?.water?.precipitation || 0;
+                const waterAlerts = [];
+
+                if (netWater > 4.5) {
+                  waterAlerts.push({
+                    type: "danger",
+                    icon: "🚨",
+                    title: isAr ? "تحذير: إجهاد مائي حاد متوقع" : "Alerte: Stress hydrique élevé",
+                    message: isAr ? `الاحتياج الصافي مرتفع (${netWater} mm/يوم). يُوصى بتشغيل الري لمدة ${durationHours} ساعة لمنع الإجهاد.` : `Besoin net élevé (${netWater} mm/j). Irrigation recommandée.`
+                  });
+                }
+
+                if (precip >= 5.0) {
+                  waterAlerts.push({
+                    type: "info",
+                    icon: "🌧️",
+                    title: isAr ? "فرصة توفير المياه (أمطار مسجلة)" : "Economie d'eau (Pluie mesurée)",
+                    message: isAr ? `تم تسجيل ${precip} ملم من الأمطار. يمكن خفض مدة الري اليومية أو تأجيلها.` : `Pluie de ${precip} mm mesurée.`
+                  });
+                }
+
+                if (waterAlerts.length === 0) return null;
+
+                return (
+                  <div className="space-y-2">
+                    {waterAlerts.map((alert, aIdx) => (
+                      <div 
+                        key={aIdx}
+                        className={`p-3.5 rounded-2xl border flex items-start gap-3 text-xs transition-all ${
+                          alert.type === "danger"
+                            ? "bg-rose-950/40 border-rose-800/50 text-rose-200"
+                            : alert.type === "warning"
+                            ? "bg-amber-950/40 border-amber-800/50 text-amber-200"
+                            : alert.type === "info"
+                            ? "bg-sky-950/40 border-sky-800/50 text-sky-200"
+                            : "bg-emerald-950/40 border-emerald-800/50 text-emerald-200"
+                        }`}
+                      >
+                        <span className="text-lg">{alert.icon}</span>
+                        <div className="space-y-0.5">
+                          <h5 className="font-black text-[#F9F8F6]">{alert.title}</h5>
+                          <p className="text-[11px] opacity-90">{alert.message}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
+
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className="bg-[#16212b] p-3 rounded-2xl border border-[#2e4052] space-y-1">
                   <span className="text-[10px] text-[#A8A093] font-bold block">{isAr ? "معدل البخر التراكمي (ET0):" : "Évapotranspiration (ET0) :"}</span>
@@ -362,7 +344,58 @@ export const AgronomyPanel = React.memo(function AgronomyPanel({
 
           {/* Collapsible Content */}
           {isFertilizationOpen && (
-            <div className="p-5 pt-2 border-t border-[#2e4052]/60 space-y-5 bg-[#16212b]/40">
+            <div className="p-5 pt-4 border-t border-[#2e4052]/60 space-y-5 bg-[#16212b]/40">
+              
+              {/* Fertilization Agronomic Alerts */}
+              {(() => {
+                const currentMonth = new Date().getMonth() + 1;
+                const fertAlerts = [];
+
+                if (currentMonth >= 5 && pctN < 40 && recN > 0) {
+                  fertAlerts.push({
+                    type: "warning",
+                    icon: "⚠️",
+                    title: isAr ? "تأخر في التسميد النيتروجيني" : "Retard d'apport en azote",
+                    message: isAr ? `تم إنجاز ${Math.round(pctN)}% فقط من الهدف السنوي للنيتروجين. يُرجى تدارك النقص.` : `Seulement ${Math.round(pctN)}% de l'azote appliqué.`
+                  });
+                }
+
+                if (data.recommendations?.npk?.foliarSprays && data.recommendations.npk.foliarSprays.length > 0) {
+                  fertAlerts.push({
+                    type: "success",
+                    icon: "🌿",
+                    title: isAr ? "توصية رش ورقي مستهدفة" : "Recommandation d'apport foliaire",
+                    message: data.recommendations.npk.foliarSprays[0].target + " — " + data.recommendations.npk.foliarSprays[0].purpose
+                  });
+                }
+
+                if (fertAlerts.length === 0) return null;
+
+                return (
+                  <div className="space-y-2">
+                    {fertAlerts.map((alert, aIdx) => (
+                      <div 
+                        key={aIdx}
+                        className={`p-3.5 rounded-2xl border flex items-start gap-3 text-xs transition-all ${
+                          alert.type === "danger"
+                            ? "bg-rose-950/40 border-rose-800/50 text-rose-200"
+                            : alert.type === "warning"
+                            ? "bg-amber-950/40 border-amber-800/50 text-amber-200"
+                            : alert.type === "info"
+                            ? "bg-sky-950/40 border-sky-800/50 text-sky-200"
+                            : "bg-emerald-950/40 border-emerald-800/50 text-emerald-200"
+                        }`}
+                      >
+                        <span className="text-lg">{alert.icon}</span>
+                        <div className="space-y-0.5">
+                          <h5 className="font-black text-[#F9F8F6]">{alert.title}</h5>
+                          <p className="text-[11px] opacity-90">{alert.message}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
               
               {/* NPK Summary Badges */}
               <div className="grid grid-cols-3 gap-3 text-center">
