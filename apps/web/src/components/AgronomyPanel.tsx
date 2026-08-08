@@ -135,9 +135,10 @@ export const AgronomyPanel = React.memo(function AgronomyPanel({
     const computedCeiling = (density * baseTreeCap * varFactor) / 1000;
     
     if (isIrr) {
-      return Math.min(12, Math.max(4, computedCeiling));
+      const maxCap = density >= 600 ? 25.0 : density >= 300 ? 18.0 : density >= 150 ? 15.0 : 12.0;
+      return Math.min(maxCap, Math.max(4.0, computedCeiling));
     } else {
-      return Math.min(4, Math.max(1, computedCeiling));
+      return Math.min(6.0, Math.max(1.0, computedCeiling));
     }
   }, [field.agronomicData, field.cropType, form.treeDensity]);
 
