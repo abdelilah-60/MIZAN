@@ -67,6 +67,7 @@ export interface IrrigationRecommendation {
   et0: number;
   etc: number;
   precipitation: number;
+  netWaterDepthMm?: number;
   litersPerTree: number;
   durationMinutes: number;
 }

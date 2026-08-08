@@ -25,6 +25,8 @@ export const AgronomyPanel = React.memo(function AgronomyPanel({
   const { t, i18n } = useTranslation();
   const isAr = i18n.language === "ar";
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+  const [isIrrigationOpen, setIsIrrigationOpen] = useState(true);
+  const [isFertilizationOpen, setIsFertilizationOpen] = useState(true);
 
   const durationMinutes = data.recommendations?.water?.durationMinutes || 0;
   const durationHours = (durationMinutes / 60).toFixed(1);
@@ -238,13 +240,7 @@ export const AgronomyPanel = React.memo(function AgronomyPanel({
         );
       })()}
 
-  const [isIrrigationOpen, setIsIrrigationOpen] = useState(true);
-  const [isFertilizationOpen, setIsFertilizationOpen] = useState(true);
-
-  return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      
-      {/* Title & Fluid Technical Settings Bar */}
+      {/* FULL-WIDTH ACCORDION CARDS CONTAINER */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#2e4052] pb-4">
         <div>
           <h4 className="text-base font-black text-[#F9F8F6] flex items-center gap-2">
